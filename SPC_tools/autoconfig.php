@@ -27,9 +27,9 @@ if (!(array_key_exists('tracks', $cws_config['SPC_tools']))){
     if ((!($tracks))||(str_contains($_SERVER["QUERY_STRING"],"reload_config"))){
         if (!($tracks)){
             //if unable to read the tracks file
-            print("Unable to read the tracks, fetching them again!");
+            print("<BR/><BR/><BR/>Unable to read the tracks, fetching them again!");
         } else {
-            print("Reloading the tracks config!");
+            print("<BR/><BR/><BR/>Reloading the tracks config!");
         }
         $tracks=[];
         //parse /event/95/manage/tracks/ to find the track labels (requires sufficient rights) and saves them in a json file.
