@@ -66,7 +66,7 @@ $num_fields=[  "id", "friendly_id" ];
 $link_fields=[ "id", "title" ];
 
 
-$js_variables .="
+$js_variables ="
 <script>
 ";
 
@@ -158,6 +158,7 @@ $votes_count=[];
 for ($imc=1; $imc<=8; $imc++){
     $votes_count["MC".$imc][1] =0;
     $votes_count["MC".$imc][2] =0;
+    $votes_count["MC".$imc][3] =0;
 }
 
 foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
@@ -183,6 +184,7 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
         $review_id=0;
         $current_action="accept";
         $new_track_id=0;
+        $abstract["vote"]="";
         foreach($abstract["reviews"] as $review){
             //echo "review\n"; 
             //var_dump($review);
