@@ -13,7 +13,7 @@
 	
 	<link rel="shortcut icon" href="{path}{logo}" />	
 	    
-	<title>Abstracts QA - {title} {conf_name}</title>
+	<title>Statistics - {title} {conf_name}</title>
 
     <!-- Bootstrap core CSS -->
 	<link href="{path}dist/bootstrap-4.3.1/css/bootstrap.min.css" rel="stylesheet">
@@ -205,21 +205,21 @@
   top: -30em;
 }
 
-table.vote_table td,
-table.vote_table th {
+table.stat_table td,
+table.stat_table th {
   padding: 0.125em 0.25em;
-  width: 4em;
+  width: 10em;
   text-align: center;
   border-bottom: thin solid #aaa;
 }
 
-table.vote_table th {
+table.stat_table th {
   font-weight: bold;
   border-bottom: thin solid #888;
   position: relative;
 }
 
-table.vote_table th button {
+table.stat_table th button {
   padding: 4px;
   margin: 1px;
   font-size: 100%;
@@ -237,7 +237,7 @@ table.vote_table th button {
   cursor: pointer;
 }
 
-table.vote_table th button span {
+table.stat_table th button span {
   position: absolute;
   right: 4px;
 }
@@ -538,10 +538,6 @@ user_last_name='{user_last_name}';
 </nav>
 <nav class="navbar navbar-dark fixed-bottom bg-dark flex-md-nowrap p-0 shadow">
     <div class="navbar-values" id='empty'> &nbsp; </div>
-    <div class="navbar-values" id='Errors'>Errors: {errors} </div>
-    <div class="navbar-values" id='To notify'>To notify: {to_notify} </div>
-    <div class="navbar-values" id='To fix'>To fix: {to_fix} </div>
-    <div class="navbar-values" id='Known'>Known: {known} </div>
     <div class="navbar-values" id='empty'> &nbsp; </div>
 </nav>
 <BR/>
@@ -552,7 +548,6 @@ user_last_name='{user_last_name}';
 <center>
 <img SRC="https://www.ipac26.org/wp-content/uploads/2024/12/IPAC2026_rvb.png" width=200><BR/>
     User name: <a id="user_name">{user_name}</a><br/>
-    <a id="info">Javascript is not yet working...</a>
 </center>
             {content}
         </main>
