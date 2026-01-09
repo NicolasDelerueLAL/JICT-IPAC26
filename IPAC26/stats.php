@@ -26,6 +26,8 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
+$abstracts_qa_data=file_read_json( $cws_config['global']['data_path']."/abstracts_qa.json", true );
+
 
 $Indico->load();
 
@@ -39,13 +41,35 @@ $stats["state"]["label"]="Abstracts state";
 $stats["MC"]=[];
 $stats["track"]=[];
 $stats["track"]["label"]="Number of abstracts by track";
-$stats["countries"]=[];
+$stats["region"]=[];
 $stats["MC_by_region"]=[];
 $stats["MC_by_region"]["label"]="Number of abstracts by MC and by region";
+$stats["MC_by_region"]["normalize"]=true;
+$stats["MC_by_gender"]=[];
+$stats["MC_by_gender"]["label"]="Number of abstracts by MC and by gender";
+$stats["MC_by_gender"]["normalize"]=true;
+$stats["Gender_by_region"]=[];
+$stats["countries"]=[];
 
+$stats["speaker_gender"]=[];
+$stats["speaker_gender"]=array("male" => 0, "female" => 0 , "unsure" => 0 );
+
+
+$stats_data["submitters"]=[];
+$stats_data["speakers"]=[];
+
+
+$stats["region"]=array("EMEA" => 0 , "Asia" => 0,  "Americas" => 0 );
+$stats["Gender_by_region"]=array("EMEA" => 0 , "Asia" => 0,  "Americas" => 0 );
+foreach(array_keys($stats["Gender_by_region"]) as $key){
+    $stats["Gender_by_region"][$key]=array("male" => 0, "female" => 0 , "unsure" => 0 );
+}
+$stats["Gender_by_region"]["label"]="Number of abstracts by region and by gender";
+$stats["Gender_by_region"]["normalize"]=true;
 for($imc=1;$imc<=8;$imc++){
     $stats["MC"]["MC".$imc]=0;
-    $stats["MC_by_region"]["MC".$imc]=array("Asia" => 0, "EMEA" => 0 , "Americas" => 0 );
+    $stats["MC_by_region"]["MC".$imc]=array("EMEA" => 0 , "Asia" => 0,  "Americas" => 0 );
+    $stats["MC_by_gender"]["MC".$imc]=array("male" => 0, "female" => 0 , "unsure" => 0 );
 }
 foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
     if (!(array_key_exists($abstract["state"],$stats["state"]))){
@@ -80,14 +104,41 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
         }
         /*
         if ($submitter_region=="Unknown"){
-            var_dump($abstract);
+            if (!($submitter_country=="Unknown")){
+                print("\n $submitter_country is in no region\n\n");
+            } else {
+                if ($abstract["submitter"]["affiliation_meta"]){
+                    var_dump($abstract);
+                }
+            }
         }
-        */
+        */        
         if (!(array_key_exists($submitter_country,$stats["countries"]))){
             $stats["countries"][$submitter_country]=0;
         }
         $stats["countries"][$submitter_country]+=1;
+        $stats["region"][$submitter_region]+=1;
         $stats["MC_by_region"][$abstract["MC"]][$submitter_region]+=1;
+
+        if (!(array_key_exists($abstract["submitter"]["full_name"],$stats_data["submitters"]))){
+            $stats_data["submitters"][$abstract["submitter"]["full_name"]]=0;
+        }
+        $stats_data["submitters"][$abstract["submitter"]["full_name"]]+=1;
+
+        $speaker_name=$abstracts_qa_data[$abstract["id"]]["gender"]["speaker_first_name"]." ".$abstracts_qa_data[$abstract["id"]]["gender"]["speaker_last_name"];
+        $speaker_gender=$abstracts_qa_data[$abstract["id"]]["gender"]["speaker_likely_gender"];
+
+        if (!(array_key_exists($speaker_name,$stats_data["speakers"]))){
+            $stats_data["speakers"][$speaker_name]=0;
+        }
+        $stats_data["speakers"][$speaker_name]+=1;
+
+        $stats["speaker_gender"][$speaker_gender]+=1;
+
+
+        $stats["MC_by_gender"][$abstract["MC"]][$speaker_gender]+=1;
+        $stats["Gender_by_region"][$submitter_region][$speaker_gender]+=1;
+
 
         //print_r($abstract["submitted_for_tracks"][0]);
         //$abstract["MC_track"]=$abstract["MC"]." - ".$abstract["submitted_for_tracks"][0]["code"].": ".$abstract["submitted_for_tracks"][0]["title"];
@@ -98,6 +149,32 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
         continue;
     }
 } //for each abstract
+
+$stats["speakers"]=[];
+$stats["speakers"]["label"]="Papers per speaker";
+$stats["submitters"]=[];
+$stats["submitters"]["label"]="Papers per submitter";
+$maxnum=8;
+for($iloop=1;$iloop<$maxnum;$iloop++){    
+    $stats["speakers"][$iloop]=0;
+    $stats["submitters"][$iloop]=0;
+}
+$stats["speakers"]["more"]=0;
+$stats["submitters"]["more"]=0;
+foreach (array_keys($stats_data["speakers"]) as $entry){
+    if ($stats_data["speakers"][$entry]<$maxnum){
+        $stats["speakers"][$stats_data["speakers"][$entry]]+=1;
+    } else {
+        $stats["speakers"]["more"]+=1;
+    }
+}
+foreach (array_keys($stats_data["submitters"]) as $entry){
+    if ($stats_data["submitters"][$entry]<$maxnum){
+        $stats["submitters"][$stats_data["submitters"][$entry]]+=1;
+    } else {
+        $stats["submitters"]["more"]+=1;
+    }
+}
 
 //require( 'autoconfig.php' );
 $cfg['template']="template.html";
@@ -134,15 +211,46 @@ $jscontent="
 google.charts.load('current', {packages: ['corechart', 'bar']});
 ";
 
-
+foreach(array_keys($stats) as $key){
+    if (array_key_exists("normalize",$stats[$key])){
+        print("\nNormalize ".$key);
+        next($stats[$key]);
+        if (is_array(next($stats[$key]))){
+            $stats[$key."_normalized"]=[];
+            print (" - table created.\n");
+            foreach(array_keys($stats[$key]) as $entry){
+                if ((!($entry=="label"))&&(!($entry=="normalize"))){
+                    $stats[$key."_normalized"][$entry]=[];
+                    $sum=0;
+                    $subkeys=array_keys(current($stats[$key]));
+                    foreach($subkeys as $skey){
+                        $sum+=$stats[$key][$entry][$skey];
+                    }
+                    foreach($subkeys as $skey){
+                        $stats[$key."_normalized"][$entry][$skey]=$stats[$key][$entry][$skey]/$sum;
+                    }
+                } else if ($entry=="label") {
+                    $stats[$key."_normalized"]["label"]=$stats[$key]["label"]." (normalized)";
+                }
+            } //foreach
+        } else {
+            $content.="Nornmalization of $key requested but it is not a 2D array<BR/>";
+        }
+        reset($stats[$key]);
+    }
+}
 foreach(array_keys($stats) as $key){
     //print("key $key \n");
     //var_dump($stats[$key]);
     $content .="<P><center>\n";
     if (array_key_exists("label",$stats[$key])){
         $content .="<h3>".$stats[$key]["label"]."</h3>\n";
+        next($stats[$key]);
     } else {
         $content .="<h3>$key</h3>\n";
+    }
+    if (array_key_exists("normalize",$stats[$key])){
+        next($stats[$key]);
     }
     $content .="</center>\n";
 
@@ -157,7 +265,7 @@ foreach(array_keys($stats) as $key){
             var data_$key = new google.visualization.DataTable();
             data_$key.addColumn('string', '');
         ";
-    if (is_array(next($stats[$key]))){
+    if (is_array(current($stats[$key]))){
         //print("here");
         $subkeys=array_keys(current($stats[$key]));
         $content.="  <th></th>\n";
@@ -169,7 +277,11 @@ foreach(array_keys($stats) as $key){
                 ";
             }
     } else {
-        ksort($stats[$key]);
+        if (count($stats[$key])<10){
+            ksort($stats[$key]);
+        } else{
+            arsort($stats[$key]);
+        }
         $content.="  <th></th>\n";
         $content.="  <th></th>\n";
         $jscontent.="
@@ -184,13 +296,13 @@ foreach(array_keys($stats) as $key){
     ";
     $ientry=1;
     foreach(array_keys($stats[$key]) as $entry){
-        if (!($entry=="label")){
+        if ((!($entry=="label"))&&(!($entry=="normalize"))){
             $content.="  <tr>\n";
             $content.="  <td>$entry</td>\n";
             $jscontent.="[ '$entry' ";
             $ientry+=1;
             if (is_array($stats[$key][$entry])){
-                foreach($subkeys as $skey){
+                foreach(array_keys($stats[$key][$entry]) as $skey){
                     $content.="  <td>".$stats[$key][$entry][$skey]."</td>\n";
                     $jscontent.=", ".$stats[$key][$entry][$skey]; 
                 }
@@ -277,5 +389,4 @@ $T->set( 'user_name', $_SESSION['indico_oauth']["user"]["full_name"]);
 $T->set( 'user_first_name', $_SESSION['indico_oauth']["user"]["first_name"]);
 $T->set( 'user_last_name',$_SESSION['indico_oauth']["user"]["last_name"]);
 echo $T->get();
-
 ?>

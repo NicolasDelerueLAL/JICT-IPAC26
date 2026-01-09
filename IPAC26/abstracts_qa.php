@@ -31,8 +31,21 @@ $Indico->load();
 
 if (str_contains($_SERVER["QUERY_STRING"],"show_known_errors")){
     $show_known_errors=true;
+} else {
+    $show_known_errors=false;
 }
 
+if ($_SERVER["QUERY_STRING"]) {
+    parse_str($_SERVER["QUERY_STRING"], $queryArray);
+    //print($_SERVER["QUERY_STRING"]."\n");
+    //print_r($queryArray);
+}
+if (str_contains($_SERVER["QUERY_STRING"],"max_ai_queries")){
+    $max_ai_queries=intval($queryArray["max_ai_queries"]);
+    //print(" max_ai_queries $max_ai_queries \n");
+} else {
+    $max_ai_queries=20;
+}
 if (count($_POST)>0){    
     if ($_POST["submit"]=="Notify"){
 /*
@@ -88,7 +101,7 @@ Nicolas Delerue<BR/>\n
     } //submit Ignore
 } //POST>0
 
-//Known errors file
+//QA data file
 $abstracts_qa_data=file_read_json( $cws_config['global']['data_path']."/abstracts_qa.json", true );
 if (!($abstracts_qa_data)){
     $abstracts_qa_data=[];
@@ -413,20 +426,24 @@ $T->set( 'user_name', $_SESSION['indico_oauth']["user"]["full_name"]);
 $T->set( 'user_first_name', $_SESSION['indico_oauth']["user"]["first_name"]);
 $T->set( 'user_last_name',$_SESSION['indico_oauth']["user"]["last_name"]);
 echo $T->get();
-flush();
 
-print("\nLoop on abstracts\n");
+print("\nLoop on abstracts starting...\n");
+flush();
 $ai_calls_counter=0;
 foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
     print($abstract["id"]." ".$abstract["title"]."\n");
     if (!(array_key_exists($abstract["id"],$abstracts_qa_data))){
         $abstracts_qa_data[$abstract["id"]]=[];
     }
-    if ((!(array_key_exists("title",$abstracts_qa_data[$abstract["id"]])))){
+    
+    if (((!(array_key_exists("title",$abstracts_qa_data[$abstract["id"]]))))||(strlen($abstracts_qa_data[$abstract["id"]]["title"]["correct_case"])<5)){
         $ai =new AI_REQUEST();
         $question='Is this title in title case, in sentence case or neither? "'.$abstract['title'].'" ? Please answer by saying title case, sentence case or neither and if it is not in sentence case, please rewrite it in sentence case without dot at the end on a separate line starting with "Rewritten title: ".';
         //print($question);
         //print("<BR/>");
+        //print("Skip title check\n");
+        $ai_calls_counter+=1;
+        $result=false;
         $result=$ai->query($question);
         if (!($result)){
             print("No result");
@@ -439,7 +456,7 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
             //print("<BR/>\n");
             //print_r(explode("\n",$result));
             $results=explode("\n",$result);
-            print($results[0]);
+            //print("Res 0 ".$results[0]);
             $answer_array=array('sentence case','title case','neither');
             if ((count($results)==1)&&(in_array($result,$answer_array))){
                 $result_value=trim($result);
@@ -447,19 +464,46 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
                 $result_value=trim(strtolower(str_replace(".","",$results[0])));
             } else {
                 $returnValue = preg_match_all("#\*\*(.*)\*\*#", $results[0] , $matches);
-                $result_value=trim($matches[1][0]);
+                if ($returnValue){
+                    $result_value=trim($matches[1][0]);
+                } else {
+                    $returnValue = preg_match_all("#The title is in (.*).#", $results[0] , $matches);
+                    if ($returnValue){
+                        $result_value=trim($matches[1][0]);
+                    } else {
+                        if (str_contains($results[0],"neither")){
+                            $result_value="neither";
+                        }
+                    }
+                }
             }
             if (in_array($result_value,$answer_array)){
                 print("Title type:");
                 print($result_value);
                 print("\n");
+                $is_next=false;
                 for ($cloop=0;$cloop<count($results);$cloop++){
-                    if (str_starts_with("Rewritten title:",$results[$cloop])){
+                    if ($is_next){
                         $correct_title=trim(str_replace("Rewritten title:","",$results[$cloop]));
                         $abstracts_qa_data[$abstract["id"]]["title"]["case"]=$results[0];
                         $abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]=$correct_title;
                         $abstracts_qa_data[$abstract["id"]]["title"]["date"]=time();
-                        print("title_correct_case: ".$abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]."\n");
+                        print("title_correct_case (next): ".$abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]."\n");
+                        $is_next=false;
+                    }
+                    if (str_starts_with("Rewritten title:",$results[$cloop])){
+                        print("cloop: $cloop \n");
+                        $correct_title=trim(str_replace("Rewritten title:","",$results[$cloop]));
+                        if (strlen($correct_title)<5){
+                            $is_next=true;
+                        } else {
+                            $abstracts_qa_data[$abstract["id"]]["title"]["case"]=$results[0];
+                            $abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]=$correct_title;
+                            $abstracts_qa_data[$abstract["id"]]["title"]["date"]=time();
+                            print("title_correct_case: ".$abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]."\n");
+                            print("strlen: ");
+                            print(strlen($correct_title)."\n");
+                        }
                     }
                 }
             } else {
@@ -467,22 +511,24 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
                 print($result);
                 print("\nstrlen");
                 print(strlen($result));
-                print("\nQuestion was:\n");
-                print($question);
+                //print("\nQuestion was:\n");
+                //print($question);
                 die("\nUnable to understand result");
             }
             flush();
             $fwret=file_write_json(  $cws_config['global']['data_path']."/abstracts_qa.json",$abstracts_qa_data);
         } // result is not empty
-        sleep(0.5);
-        $ai_calls_counter+=1;
+        usleep(500);
     } else{
         print("Title key exists:\n");
         print($abstracts_qa_data[$abstract["id"]]["title"]["case"]."\n");
         print($abstracts_qa_data[$abstract["id"]]["title"]["correct_case"]."\n");
         print("\n");
     }
-    if ((!(array_key_exists("lgender",$abstracts_qa_data[$abstract["id"]])))||(strlen($abstracts_qa_data[$abstract["id"]]["gender"])==0)){
+    
+    
+    if ((!(array_key_exists("gender",$abstracts_qa_data[$abstract["id"]])))||(strlen($abstracts_qa_data[$abstract["id"]]["gender"]["speaker_likely_gender"])==0)){
+        
         $ai =new AI_REQUEST();
         $speaker_first_name="";
         $speaker_last_name="";
@@ -502,6 +548,7 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
             //print($question);
             //print("<BR/>");
             $result=$ai->query($question);
+            $ai_calls_counter+=1;
             //print("result:");
             //print($result);
             //print("<BR/>\n");
@@ -551,11 +598,11 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
                 }
             } //result not empty
             flush();
-            sleep(0.5);
-            $ai_calls_counter+=1;
+            usleep(500);
         } else {
             print("Unable to find speaker first name\n");
         }
+        
     } else {
         print("Gender key exists: \n");
         //print(strlen($abstracts_qa_data[$abstract["id"]]["likely_gender"])."\n");
@@ -563,10 +610,13 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
         print($abstracts_qa_data[$abstract["id"]]["gender"]["likely_gender"]."\n");
         print("\n");
     }
+    
     print("<BR/><BR/><BR/>\n\n\n");
-    if ($ai_calls_counter>25){
+    print("AI counter : $ai_calls_counter \n");
+    if ($ai_calls_counter>=$max_ai_queries){
         die("AI called ".$ai_calls_counter." times. Stopping.");         
     }
+    flush();
 
 } // for each abstract
 print("All abstracts checked.");
