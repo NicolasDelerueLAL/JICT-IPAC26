@@ -2,6 +2,7 @@
 
 /* Initial version by Stefano.Deiuri@Elettra.Eu
 
+2026.02.10 - nicolas.delerue@ijclab.in2p3.fr: change oauth redirection using cookie to know where the visitor came from.
 2025.11.20 - nicolas.delerue@ijclab.in2p3.fr: improve statistics
 2025.11.10 - nicolas.delerue@ijclab.in2p3.fr: fix problem related to $_server [PWD] being empty
 2025.06.05 - fix statistics
@@ -91,6 +92,9 @@ class INDICO extends JICT_OBJ {
 		}
 
 		if (empty($_SESSION['indico_oauth']['token']) || strlen($_SESSION['indico_oauth']['token']) < 20) {
+			$cookie_name="URI_before_oauth";
+			$cookie_value=$_SERVER["REQUEST_URI"];
+			setcookie($cookie_name, $cookie_value, time() + 3600, '/'); //valid 1 hour
 			echo $login_message;
 			exit;
 		}
@@ -880,7 +884,8 @@ class INDICO extends JICT_OBJ {
 					'mc'=>substr($x["submitted_for_tracks"][0]["code"],0,3),
 					'track'=> substr($x["submitted_for_tracks"][0]["code"],4,3),
 					'submitter_country'=> $x["submitter"]["affiliation_meta"]["country_name"],
-					'submitter_region'=> get_region($x["submitter"]["affiliation_meta"]["country_code"])
+					'submitter_region'=> get_region($x["submitter"]["affiliation_meta"]["country_code"]),
+					'mc_region'=>substr($x["submitted_for_tracks"][0]["code"],0,3)."-".get_region($x["submitter"]["affiliation_meta"]["country_code"])
 					];
                 /*      
 				if (get_region($x["submitter"]["affiliation_meta"]["country_code"])=="Unknown"){
@@ -948,7 +953,7 @@ class INDICO extends JICT_OBJ {
 
         $ts_deadline =strtotime($this->cfg['dates']['abstracts_submission']['deadline']);
 
-        $stats_fields=[ 'mc', 'track', 'submitter_country', 'submitter_region'];
+        $stats_fields=[ 'mc', 'track', 'submitter_country', 'submitter_region', 'mc_region'];
                             
         foreach ($stats_fields as $k) {
             $stats[$k] =[];

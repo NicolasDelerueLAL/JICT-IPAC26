@@ -31,7 +31,15 @@ if (empty($_GET['code'])) {
 $Indico->oauth( 'token' );
 
 $conf =in_array( $_GET['conf'], [ 'jfic', 'ipac23', 'ipac24' ]) ? '_' .$_GET['conf'] : false;
+var_dump($_SERVER);
 
-header( "Location: ".$cws_config['global']['root_url']."/" );
+var_dump($user);
 
+if (isset($_COOKIE["URI_before_oauth"])){
+    $redirect_uri=$_COOKIE["URI_before_oauth"];    
+    setcookie("URI_before_oauth", "", time() - 3600, '/'); //delete cookie
+} else {
+    $redirect_uri="/JICT-LPR/";
+}
+header( "Location: $redirect_uri" );
 ?>
