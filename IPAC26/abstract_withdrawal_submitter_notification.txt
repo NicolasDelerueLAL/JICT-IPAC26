@@ -1,0 +1,10 @@
+[IPAC'26] Your contribution has been withdrawn: {abstract_title}
+Dear {first_name} {last_name},
+
+Thank you for submitting an abstract for IPAC'26.
+This message is to let you know that, as requested, it has been withdrawn.
+
+Best wishes,
+
+Nicolas Delerue
+(IPAC'26 Editor in chief)
