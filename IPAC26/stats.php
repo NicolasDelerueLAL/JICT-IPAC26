@@ -13,6 +13,15 @@ if (str_contains($_SERVER["QUERY_STRING"],"debug")){
 } //if debug on
 
 
+if (str_contains($_SERVER["QUERY_STRING"],"use_all_abstracts")){
+    print("<BR/><BR/><BR/>Using all abstracts<BR/>\n");
+    $use_all_abstracts =true;
+} //if debug on
+else {
+    $use_all_abstracts =false;
+}
+
+
 require( '../config.php' );
 require_lib( 'jict', '1.0' );
 require_lib( 'indico', '1.0' );
@@ -76,7 +85,7 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
         $stats["state"][$abstract["state"]]=0;
     }
     $stats["state"][$abstract["state"]]+=1;
-    if ($abstract["state"]=="submitted"){
+    if (($abstract["state"]=="submitted")||($use_all_abstracts)){
         $abstract["MC"]=substr($abstract["submitted_for_tracks"][0]["code"],0,3);
         $abstract["track"]=$abstract["submitted_for_tracks"][0]["code"]." - ".$abstract["submitted_for_tracks"][0]["title"];
         
@@ -151,9 +160,9 @@ foreach ($Indico->data[$data_key]['abstracts'] as $abstract) {
 } //for each abstract
 
 $stats["speakers"]=[];
-$stats["speakers"]["label"]="Papers per speaker";
+$stats["speakers"]["label"]="Abstracts per speaker";
 $stats["submitters"]=[];
-$stats["submitters"]["label"]="Papers per submitter";
+$stats["submitters"]["label"]="Abstracts per submitter";
 $maxnum=8;
 for($iloop=1;$iloop<$maxnum;$iloop++){    
     $stats["speakers"][$iloop]=0;
