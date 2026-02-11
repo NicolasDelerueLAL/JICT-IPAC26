@@ -8,6 +8,7 @@
 */
 
 define( 'WEB_ECHO_STYLE', 'font-family: Arial; font-weight: bold; padding: 3px;' );
+define( 'COLORED_OUPUT', 'font-family: Arial; font-weight: bold; color:red; padding: 3px;' );
 
 $cws_echo_mode =false;
 
@@ -53,7 +54,7 @@ function need_file() {
 function get_region($country_code){
         $Asia_list=[ "AU", "CN", "IN", "JP", "KR", "KZ", "TH", "TW" ];
         $Americas_list=[ "BR", "CA", "MX", "US" ];
-        $EMEAS_list=[ "AM", "AT", "BE", "CH", "CZ", "DE", "ES", "FR" , "GB", "HU", "IL", "IR", "IT", "JO", "LT", "MT", "NL", "PL", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
+        $EMEAS_list=[ "AM", "AT", "BE", "CH", "CZ", "DE", "DZ", "ES", "FR" , "GB", "GR", "HU", "IL", "IR", "IT", "JO", "LT", "LV", "MT", "NL", "NO", "PL", "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
         if (in_array($country_code,$Asia_list)) return "Asia";
         if (in_array($country_code,$Americas_list)) return "Americas";
         if (in_array($country_code,$EMEAS_list)) return "EMEA";
@@ -911,9 +912,11 @@ class API_REQUEST {
 		$headers =$this->parseHeaders( $http_response_header );
 		
 		$this->api_headers =$headers;
-		$this->response_code =$headers['reponse_code'];
+		$this->response_code =$headers['response_code'];
 
-		if ($headers['reponse_code'] != 200) {
+		if ($headers['response_code'] != 200) {
+            print("Response code error: ");
+            print($headers['response_code']."<BR/>\n");
 			$this->result =$result;
 			$this->error =error_get_last();
 			
@@ -938,7 +941,7 @@ class API_REQUEST {
 				
 			} else {
 				$head[] = $v;
-				if( preg_match( "#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out ) ) $head['reponse_code'] = intval($out[1]);
+				if( preg_match( "#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out ) ) $head['response_code'] = intval($out[1]);
 			}
 		}
 		
