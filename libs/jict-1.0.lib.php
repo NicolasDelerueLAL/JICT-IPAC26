@@ -54,7 +54,7 @@ function need_file() {
 function get_region($country_code){
         $Asia_list=[ "AU", "CN", "IN", "JP", "KR", "KZ", "TH", "TW" ];
         $Americas_list=[ "BR", "CA", "MX", "US" ];
-        $EMEAS_list=[ "AM", "AT", "BE", "CH", "CZ", "DE", "DZ", "ES", "FR" , "GB", "GR", "HU", "IL", "IR", "IT", "JO", "LT", "LV", "MT", "NL", "NO", "PL", "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
+        $EMEAS_list=[ "AM", "AT", "BA", "BE", "CH", "CZ", "DE", "DK", "DZ", "ES", "FR" , "GB", "GR", "HR", "HU", "IL", "IR", "IT", "JO", "LT", "LU", "LV", "MT", "NG", "NL", "NO", "PL", "PS",  "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
         if (in_array($country_code,$Asia_list)) return "Asia";
         if (in_array($country_code,$Americas_list)) return "Americas";
         if (in_array($country_code,$EMEAS_list)) return "EMEA";
@@ -901,14 +901,18 @@ class API_REQUEST {
                 'ignore_errors' =>$this->cfg['ignore_errors'],
 				'content' =>$content
                 ));
-		
+		if ($this->cfg['proxy']){
+            $this->request_options->http['proxy']=$this->cfg['proxy'];
+        }
+
+
 		$s =@stream_context_create( $this->request_options );
 
 		$this->api_request =$this->api_url .$_name
 			.($_method == 'GET' && !empty($_data) ? '?' .http_build_query($_data) : false );
 
 		$result =@file_get_contents( $this->api_request, false, $s );
-
+        
 		$headers =$this->parseHeaders( $http_response_header );
 		
 		$this->api_headers =$headers;
@@ -919,7 +923,7 @@ class API_REQUEST {
             print($headers['response_code']."<BR/>\n");
 			$this->result =$result;
 			$this->error =error_get_last();
-			
+
 		} else {
             if (strpos( $headers['Content-Type'], 'html' )) $this->result =$result;
 			else $this->result =json_decode( $result, true );
