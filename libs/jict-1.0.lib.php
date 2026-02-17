@@ -901,7 +901,7 @@ class API_REQUEST {
                 'ignore_errors' =>$this->cfg['ignore_errors'],
 				'content' =>$content
                 ));
-		if ($this->cfg['proxy']){
+		if (array_key_exists('proxy',$this->cfg)){
             $this->request_options->http['proxy']=$this->cfg['proxy'];
         }
 

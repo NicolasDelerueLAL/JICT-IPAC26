@@ -49,7 +49,7 @@ class INDICO extends JICT_OBJ {
 	//-------------------------------------------------------------------------
 	function __construct( $_cfg =false, $_load =false ) {
 		$this->api =new API_REQUEST( $_cfg['indico_server_url'] );
-		if ($_cfg['proxy']){
+		if (array_key_exists('proxy',$_cfg)){
 			$this->api->config( 'proxy', $_cfg['proxy'] );
 		}
 		$this->api->config( 'authorization_header', 'Bearer ' .$_cfg['indico_token'] );
