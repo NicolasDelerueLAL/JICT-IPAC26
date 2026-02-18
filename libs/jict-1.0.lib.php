@@ -902,7 +902,7 @@ class API_REQUEST {
 				'content' =>$content
                 ));
 		if (array_key_exists('proxy',$this->cfg)){
-            $this->request_options->http['proxy']=$this->cfg['proxy'];
+            $this->request_options["http"]['proxy']=$this->cfg['proxy'];
         }
 
 
