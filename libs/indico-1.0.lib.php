@@ -49,13 +49,14 @@ class INDICO extends JICT_OBJ {
 	//-------------------------------------------------------------------------
 	function __construct( $_cfg =false, $_load =false ) {
 		$this->api =new API_REQUEST( $_cfg['indico_server_url'] );
-		if (array_key_exists('proxy',$_cfg)){
-			$this->api->config( 'proxy', $_cfg['proxy'] );
-		}
 		$this->api->config( 'authorization_header', 'Bearer ' .$_cfg['indico_token'] );
 
 		$this->event_id =$_cfg['indico_event_id'];
 		
+		if (array_key_exists('proxy',$_cfg)){
+			$this->api->config( 'proxy', $_cfg['proxy'] );
+		}
+
 		if ($_cfg) $this->config( $_cfg );
 
 		if (empty($this->cfg['cache_time'])) $this->cfg['cache_time'] =60;
@@ -217,6 +218,10 @@ class INDICO extends JICT_OBJ {
         $fname =trim(str_replace( '/', '_', $req ), '_');
         if (substr( $fname, -5 ) != '.json') $fname .='.json';
 
+		if (!$_rqst_cfg){
+			$_rqst_cfg=[];
+		}
+
 		$verbose =empty($_rqst_cfg['quiet']);
 
 		if ($_method != 'GET') $_rqst_cfg['disable_cache'] =true;
@@ -232,7 +237,7 @@ class INDICO extends JICT_OBJ {
 			$this->requests_api_count ++;
 			$t0 =time();
 			if ($verbose) $this->verbose( "# $_method ($cache_time) $req... ", 2 );
-			if ($_rqst_cfg['use_session_token']) {
+			if (array_key_exists('use_session_token',$_rqst_cfg)) {
 				//Without that the request's auther will be the app oauth token's owner
 				//print("Overriding authorization header with session token\n"); 
 			    $this->api->config( 'authorization_header', 'Bearer ' .$_SESSION['indico_oauth']['token'] );	
