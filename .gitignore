@@ -11,6 +11,7 @@ logo_*.png
 page_authors_check/images/*
 exports/*.csv
 conference-config.php
+conference-secrets.php
 libs/phpqrcode/cache/*
 indico_stats_importer/not_present.txt
 indico_stats_importer/make.php.orig
