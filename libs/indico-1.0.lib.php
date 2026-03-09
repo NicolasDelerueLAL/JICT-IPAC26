@@ -709,7 +709,8 @@ class INDICO extends JICT_OBJ {
 
                 //status
                 $tag_status="";
-                $status_tags=[ "Student registration","EPS member","LOC team member","PCO team member","Exhibitor registration"];
+                $status_tags=$cws_config['indico_stats_importer']['registrants_status_tags'];
+                
                 foreach ($registrants[$rid]['tags'] as $tag){
                     if (in_array($tag,$status_tags)){
                         if (empty($tag_status)){
