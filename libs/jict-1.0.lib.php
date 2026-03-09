@@ -54,7 +54,7 @@ function need_file() {
 function get_region($country_code){
         $Asia_list=[ "AU", "CN", "IN", "JP", "KR", "KZ", "TH", "TW" ];
         $Americas_list=[ "BR", "CA", "MX", "US" ];
-        $EMEAS_list=[ "AM", "AT", "BA", "BE", "CH", "CZ", "DE", "DK", "DZ", "ES", "FR" , "GB", "GR", "HR", "HU", "IL", "IR", "IT", "JO", "LT", "LU", "LV", "MT", "NG", "NL", "NO", "PL", "PS",  "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
+        $EMEAS_list=[ "AM", "AT", "BA", "BE", "CH", "CZ", "DE", "DK", "DZ", "ES", "FI", "FR" , "GB", "GR", "HR", "HU", "IL", "IR", "IT", "JO", "LT", "LU", "LV", "MT", "NG", "NL", "NO", "PL", "PS",  "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
         if (in_array($country_code,$Asia_list)) return "Asia";
         if (in_array($country_code,$Americas_list)) return "Americas";
         if (in_array($country_code,$EMEAS_list)) return "EMEA";
@@ -919,8 +919,8 @@ class API_REQUEST {
 		$this->response_code =$headers['response_code'];
 
 		if ($headers['response_code'] != 200) {
-            print("Response code error: ");
-            print($headers['response_code']."<BR/>\n");
+            //print("Response code error: ");
+            //print($headers['response_code']."<BR/>\n");
 			$this->result =$result;
 			$this->error =error_get_last();
 
