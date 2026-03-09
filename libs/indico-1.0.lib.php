@@ -672,6 +672,7 @@ class INDICO extends JICT_OBJ {
                 $ok =true;
             }
 
+            //if (($ok)&&($rid>10600)) {
             if ($ok) {
                 $registrants[$rid] =[
                     'surname' =>$p['surname'],
@@ -718,19 +719,22 @@ class INDICO extends JICT_OBJ {
                         } else {
                             $tag_status="Multiple status";
                         }
-                    }
+                    }					
                 }//foreach tag
                 if (empty($tag_status)){
                     $tag_status="Normal";
                 }
+				//print("Registrant $rid status: $tag_status\n");
                 $registrants[$rid]["tag_status"]=$tag_status;
                 
                 $stats_fields=[ 'by_dates', 'by_days_to_deadline', 'country', 'country_code' , 'region',  'paid', "tag_status"];
                 
                 //Get extra info on registrant
                 if ((!empty($cws_config['indico_stats_importer']['registrants_load_extra_data']))&&($cws_config['indico_stats_importer']['registrants_load_extra_data']==1)){
+                    //echo "stats on extra key\n";
+					//print("Memory: ".(memory_get_usage()/1024/1024)."MB\n");
                     $data_extra_key =$this->request( sprintf('/api/checkin/event/{id}/forms/%s/registrations/%s' ,  $cws_config['indico_stats_importer']['registrants_form_id'], $rid));
-                    echo "stats on extra key\n";
+                    //echo "got entry $rid\n";
                     $registrants_extra_stats=0;
                     foreach ($cws_config['indico_stats_importer']['registrants_extra'] as $statitem){
                         //$stats['registrants_extra_stats_'.strval($registrants_extra_stats)]["name"]=$statitem["name"];
@@ -738,7 +742,7 @@ class INDICO extends JICT_OBJ {
                         foreach ($this->data[$data_extra_key]["registration_data"] as $part){
                             //echo 'part title: '.$part["title"]."\n"; 
                             foreach($part["fields"] as $formentry) {
-                                //echo "      formentry: ".$formentry["title"]."  ".$formentry["data"]."\n";
+	                            //echo "      formentry: ".$formentry["title"]."  ".$formentry["data"]." ";
 								if (strlen($formentry["title"])>60){
 									$formentry["title"]=substr($formentry["title"],0,25)."...".substr($formentry["title"],strlen($formentry["title"])-25,25);
 									//print("Shortened title: ". $formentry["title"]);
@@ -808,13 +812,11 @@ class INDICO extends JICT_OBJ {
                     $registrants[$rid]['gender']=$gender_codes[array_keys($this->data[$data_extra_key]["registration_data"][0]["fields"][$gender_field]["data"])[0]];
                     array_push($stats_fields,'gender');
                 } // get extra info on registrant 
-                
             }         
         }
         foreach ($stats_fields as $k) {
             $stats[$k] =[];
         }
-
         $ts_deadline =strtotime($this->cfg['dates']['registration']['deadline']);
 
         foreach ($registrants as $x) {
@@ -838,8 +840,8 @@ class INDICO extends JICT_OBJ {
             'stats' =>$stats
             ); 
 
-        //echo "print stats\n";
-        //print_r( $stats );
+		//echo "print stats\n";
+		//print_r( $stats );
     }
 
 
