@@ -97,18 +97,32 @@ if (!($contribution_id)){
     for ($icount=0;$icount<count($matches[0]);$icount++){
         $contribs[$matches[2][$icount]]=$matches[3][$icount];
     }
-    $content .="Here is your list of contributions, please select the one for which you would like to download a template:<BR/>\n";
-    $content .="<ul>\n";
-    foreach($contribs as $id => $title){
-        $content .="<li><A HREF='custom_template.php?contribution_id=".$id."'>".$id.": ".$title."</A></li>\n";
+    if (count($contribs)==0){
+        $content .="<b>No contribution found for ".$user["first_name"]." ".$user["last_name"].".</b><BR/>\n";
+        $content .="Please go to <A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/mine' TARGET='_BLANK'> the indico list of your contributions </A>, click on the contribution for which you would like a c
+    template. The contribution ID is the 5 digit number at the end of the URL of your contribution. Please enter it below to get the associated template:<BR/>\n";
+        $content .="<form method='GET' action='custom_template.php'>\n";
+        $content .="<input type='text' name='contribution_id' placeholder='Contribution ID (5 digits)' required pattern='[0-9]{5}' />\n";
+        $content .="<input type='submit' value='Get template' />\n";
+        $content .="</form>\n";
+    } else {
+        if (count($contribs)==1){
+            $content .="".count($contribs)." contribution found for ".$user["first_name"]." ".$user["last_name"].".<BR/>\n";
+        } else {
+            $content .="".count($contribs)." contribution(s) found for ".$user["first_name"]." ".$user["last_name"].".<BR/>\n";
+        }
+        $content .="Here is your list of contributions, please select the one for which you would like to download a template:<BR/>\n";
+        $content .="<ul>\n";
+        foreach($contribs as $id => $title){
+            $content .="<li><A HREF='custom_template.php?contribution_id=".$id."'>".$id.": ".$title."</A></li>\n";
+        }
+        $content .="</ul>\n";
     }
-    $content .="</ul>\n";
     $T->set( 'title', "Contributions of ".$user["first_name"]." ".$user["last_name"] ." at IPAC'26");
     $content .="<BR/>\n";
     $content .="<BR/>\n";
     $content .="<BR/>\n";
 
-    //parse https://indico.jacow.org/event/37/contributions/mine for "/event/37/contributions/149/"
 } else {
     $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
     if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
