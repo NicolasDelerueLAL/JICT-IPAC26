@@ -52,9 +52,9 @@ function need_file() {
 
 
 function get_region($country_code){
-        $Asia_list=[ "AU", "CN", "IN", "JP", "KR", "KZ", "TH", "TW" ];
+        $Asia_list=[ "AU", "CN", "IN", "JP", "KR", "KZ", "NP", "TH", "TW" ];
         $Americas_list=[ "BR", "CA", "MX", "US" ];
-        $EMEAS_list=[ "AM", "AT", "BA", "BE", "CH", "CZ", "DE", "DK", "DZ", "ES", "FI", "FR" , "GB", "GR", "HR", "HU", "IL", "IR", "IT", "JO", "LT", "LU", "LV", "MT", "NG", "NL", "NO", "PL", "PS",  "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
+        $EMEAS_list=[ "AM", "AT", "BA", "BE", "CH", "CZ", "DE", "DK", "DZ", "ES", "ET", "FI", "FR" , "GB", "GR", "HR", "HU", "IL", "IR", "IT", "JO", "LT", "LU", "LV", "MA", "MT", "NG", "NL", "NO", "PL", "PS",  "PT", "RO", "RU", "SE", "SI", "TN", "TR",  "UA",  "UK", "ZA" ];
         if (in_array($country_code,$Asia_list)) return "Asia";
         if (in_array($country_code,$Americas_list)) return "Americas";
         if (in_array($country_code,$EMEAS_list)) return "EMEA";
