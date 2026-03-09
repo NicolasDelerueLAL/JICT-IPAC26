@@ -58,7 +58,11 @@ function get_region($country_code){
         if (in_array($country_code,$Asia_list)) return "Asia";
         if (in_array($country_code,$Americas_list)) return "Americas";
         if (in_array($country_code,$EMEAS_list)) return "EMEA";
-        echo( "Unknown country code: ".$country_code."<BR/>\n" );
+        if (strlen($country_code)==0) {
+            print("Empty country code<BR/>\n");
+            return "Empty";
+        }
+        echo( "Unknown country code: ".$country_code." " . strlen($country_code) . "<BR/>\n" );
     
         return "Unknown";
 } //get_region
