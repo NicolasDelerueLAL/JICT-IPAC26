@@ -32,18 +32,6 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
-if ($_SERVER["QUERY_STRING"]) {
-    parse_str($_SERVER["QUERY_STRING"], $queryArray);
-    //print($_SERVER["QUERY_STRING"]."\n");
-    //print_r($queryArray);
-}
-if (str_contains($_SERVER["QUERY_STRING"],"contribution_id")){
-    $contribution_id=$queryArray["contribution_id"];
-} else {
-    $contribution_id=false;
-}
-
-
 
 
 $T =new TMPL( $cfg['template'] );
@@ -75,6 +63,30 @@ $content .="<BR/>";
 
 
 
+if ($_SERVER["QUERY_STRING"]) {
+    parse_str($_SERVER["QUERY_STRING"], $queryArray);
+    //print($_SERVER["QUERY_STRING"]."\n");
+    //print_r($queryArray);
+}
+if (str_contains($_SERVER["QUERY_STRING"],"contribution_id")){
+    $contribution_id=$queryArray["contribution_id"];
+} else if (str_contains($_SERVER["QUERY_STRING"],"contribution_code")){
+    $contribution_code=strtoupper($queryArray["contribution_code"]);
+    $dictionnary=file_read_json($cws_config['global']['data_path']."/contribs_dictionnary.json",true);
+    if (array_key_exists($contribution_code, $dictionnary["contribution_code"])){
+        $contribution_id=$dictionnary["contribution_code"][$contribution_code];
+        $content .="Contribution ID: $contribution_id <BR/>\n";
+        print("Contribution ID: $contribution_id <BR/>\n");
+    } else {
+        $content .="<b>Contribution code $contribution_code not found.</b><BR/>\n";
+    }
+
+} else {
+    $contribution_id=false;
+}
+
+
+
 /*
 if (array_search("ADM",$user["roles"])){
     $content .="You are an administrator<BR/>\n";
@@ -99,10 +111,9 @@ if (!($contribution_id)){
     }
     if (count($contribs)==0){
         $content .="<b>No contribution found for ".$user["first_name"]." ".$user["last_name"].".</b><BR/>\n";
-        $content .="Please go to <A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/mine' TARGET='_BLANK'> the indico list of your contributions </A>, click on the contribution for which you would like a c
-    template. The contribution ID is the 5 digit number at the end of the URL of your contribution. Please enter it below to get the associated template:<BR/>\n";
+        $content .="Please go to <A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/mine' TARGET='_BLANK'> the indico list of your contributions </A> and check the 7 digits code in parentheses after the contribution title. Please enter it below to get the associated template:<BR/>\n";
         $content .="<form method='GET' action='custom_template.php'>\n";
-        $content .="<input type='text' name='contribution_id' placeholder='Contribution ID (5 digits)' required pattern='[0-9]{5}' />\n";
+        $content .="<input type='text' name='contribution_code' placeholder='Contribution code (7 digits)' required pattern='[a-zA-Z0-9]{7}' />\n";
         $content .="<input type='submit' value='Get template' />\n";
         $content .="</form>\n";
     } else {
@@ -148,6 +159,12 @@ if (!($contribution_id)){
     }
     if (!($allowed)){
         $content .="<b>You are not allowed to access this contribution. Please check that you are among the contributors of this contribution. If necessary, ask the submitte to update the $indico_link.</b>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
         $T->set( 'content', $content );
         echo $T->get();
         exit;
