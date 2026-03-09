@@ -87,9 +87,12 @@ if (!($contribution_id)){
     //$content .="No contribution ID passed.<BR/>\n";
     $content .="<center><H2>Contributions for ".$user["first_name"]." ".$user["last_name"]."</H2></center>\n";
     $req =$Indico->request( "/event/{id}/contributions/mine", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' =>true ) );
-    //var_dump($req);
+    print("<!--- req size: ".strlen(json_encode($req))." bytes --->\n");
     $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\">(.+)</a>#';
     $returnValue = preg_match_all($matchtxt, $req, $matches);
+    print("<!--- \n");
+    var_dump($matches);
+    print("--->\n");
     $contribs=[];
     for ($icount=0;$icount<count($matches[0]);$icount++){
         $contribs[$matches[2][$icount]]=$matches[3][$icount];
@@ -117,7 +120,8 @@ if (!($contribution_id)){
     $content .="<center><H2>Custom template for contribution ".$contribution_code."</H2></center>\n";
     $content .="<center><H4>".$req["title"]."</H4></center>\n";
     $T->set( 'title', "Custom template - ".$contribution_code );
-    $content .="Indico link to this contribution: <A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/".$contribution_id."/' TARGET='_BLANK'>Contribution $contribution_code (ID: $contribution_id)</A><BR/>\n";
+    $content .="Indico link to this contribution: <A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/".$contribution_id."/' TARGET='_BLANK'>Contribution $contribution_code (ID: $contribution_id)</A>.<BR/>\n";
+    $content .="<BR/>\n";
 
     //check that the user is allowed to access this contribution
     $indico_link="<A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/".$contribution_id."/' TARGET='_BLANK'>Indico entry for contribution $contribution_code</A>";
@@ -134,6 +138,20 @@ if (!($contribution_id)){
         echo $T->get();
         exit;
     }
+    $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+    if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
+            $content .="Title of your contribution in <A HREF='https://www.scribbr.com/academic-writing/sentence-case/'>sentence case</A> (for indico): ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n";
+            $content .="Title in upper case (for the paper): ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n";
+    } else {
+        $content .="<b>The title of your contribution has not yet been validated by an editor or has been modified after validation.</b><BR/>\n";
+        $content .="Title of your contribution in <A HREF='https://www.scribbr.com/academic-writing/sentence-case/'>sentence case</A> (for indico): ".$req["title"]."<BR/>\n";
+        $content .="Title in upper case (for the paper): ".strtoupper($req["title"])."<BR/>\n";
+        $content .="<BR/>\n";
+    }
+    $content .="<i>In <b>sentence case</b>, please ensure that proper capitalization is used for proper nouns, acronyms and units.</i><BR/>\n";
+    $content .="<i>In <b>upper case</b>, please ensure that acronyms or units that contain lower case have not been capitalized.</i><BR/>\n";
+    $content .="If this is incorrect, please click <A HREF='custom_template_file.php?contribution_id=".$contribution_id."&update_title=1'>here to update the title manually</A>.<BR/>\n";
+    $content .="<BR/>\n";
     //var_dump($req);
     $author_block =create_title_author_block($req,$indico_link);
     $content .=$author_block["html"];
