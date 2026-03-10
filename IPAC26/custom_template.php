@@ -100,11 +100,7 @@ if (!($contribution_id)){
     $content .="<center><H2>Contributions for ".$user["first_name"]." ".$user["last_name"]."</H2></center>\n";
     $req =$Indico->request( "/event/{id}/contributions/mine", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' =>true ) );
     print("<!--- req size: ".strlen(json_encode($req))." bytes --->\n");
-    $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\"#';
-    $returnValue = preg_match_all($matchtxt, $req, $matches);
-    print("<!--- \n");
-    var_dump($matches);
-    print("--->\n");
+    var_dump($req);
     $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\">(.+)</a>#';
     $returnValue = preg_match_all($matchtxt, $req, $matches);
     print("<!--- \n");
