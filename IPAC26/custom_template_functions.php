@@ -37,7 +37,7 @@ function get_initial($name,$spacer){
 } // function get_initial
 
 function create_title_author_block($req,$indico_link=false){
-    global $Indico;
+    global $Indico,$cws_config;
     //To do:
     // - check for secondary affili
     // - Authors by full alphabetical order 
@@ -48,12 +48,27 @@ function create_title_author_block($req,$indico_link=false){
     $latex.="%%%%% If you need to modify the content of this block, do it by modifying the $indico_link %%%%%\n";
     $function_content .="Contribution title: <b>".$req["title"]."</b><BR/>\n";
 
+    $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+    if (!($contribs_qa_data)) {
+        die("Unable to read contribs_qa_data.");
+    }
+    $contribution_id=$req["id"];
+    if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
+        $title_upper_case=$contribs_qa_data[$contribution_id]["title"]["upper_case"];
+        $title_sentence_case=$contribs_qa_data[$contribution_id]["title"]["sentence_case"];
+    } else {
+        $title_upper_case=strtoupper($req["title"]);
+        $title_sentence_case=ucfirst($req["title"]);
+    }
+
+
     //check for uppercase in title
     if (!(preg_match("/[A-Z]/",substr($req["title"],0,1)))){
-        $function_content .="<b>WARNING:</b> The title does not start with an uppercase letter. This should not be the case.<BR/>\n";
+        $function_content .="<b>WARNING:</b> The title in indico does not start with an uppercase letter. This should not be the case.<BR/>\n";
         $function_content .="To fix this, please update the contribution title in  by modifying the $indico_link: the title should start with an uppercase letter. <BR/>\n";
     } 
     $upmatches=[];
+    /*
     $latex_title_case=$req["title"];
     if (preg_match_all("/[A-Z]/",substr($req["title"],1),$upmatches,PREG_OFFSET_CAPTURE)){
         //var_dump($upmatches);
@@ -70,12 +85,12 @@ function create_title_author_block($req,$indico_link=false){
             $offset+=15; // account for the length of \NoCaseChange{}
         }
         $function_content .="</ul>\n";  
-        $function_content .="If any of the above words are not acronyms or proper nouns, please update the contribution title by modifying the $indico_link: the title should be in sentence case with only the first letter capitalized (and acronyms or proper nouns). <BR/>\n";
+        $function_content .="If any of the above words are not acronyms or proper nouns, please update the contribution title by modifying the $indico_link: the title should be in sentence case with only the first letter capitalized (and acronyms or proper nouns). <BR/>\n";    
     }
- 
+    */
 
-    $latex.="\title{".$latex_title_case;
-    $word_title=$req["title"];
+    $latex.="\title{".$title_upper_case;
+    $word_title=$title_upper_case;
     $function_content .="<BR/>\n";
     $word_footnote="";
     $word_footnote_lines=0;

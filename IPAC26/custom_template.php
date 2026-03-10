@@ -18,7 +18,7 @@ if (str_contains($_SERVER["QUERY_STRING"],"debug")){
 require( '../config.php' );
 require_lib( 'jict', '1.0' );
 require_lib( 'indico', '1.0' );
-//require( 'ipac26_tools.php' );
+require( 'ipac26_tools.php' );
 
 require_once('custom_template_functions.php');
 
@@ -100,6 +100,11 @@ if (!($contribution_id)){
     $content .="<center><H2>Contributions for ".$user["first_name"]." ".$user["last_name"]."</H2></center>\n";
     $req =$Indico->request( "/event/{id}/contributions/mine", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' =>true ) );
     print("<!--- req size: ".strlen(json_encode($req))." bytes --->\n");
+    $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\"#';
+    $returnValue = preg_match_all($matchtxt, $req, $matches);
+    print("<!--- \n");
+    var_dump($matches);
+    print("--->\n");
     $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\">(.+)</a>#';
     $returnValue = preg_match_all($matchtxt, $req, $matches);
     print("<!--- \n");
@@ -169,7 +174,58 @@ if (!($contribution_id)){
         echo $T->get();
         exit;
     }
+
+    if ($_POST){
+        if (array_key_exists("action", $_POST)){
+            if ($_POST["action"]=="update_title"){
+                $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+                $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=$_POST["sentence_case"];
+                $contribs_qa_data[$contribution_id]["title"]["upper_case"]=$_POST["upper_case"];
+                $contribs_qa_data[$contribution_id]["title"]["entered_manually"]="manual_update_by_user";
+                $content .="<b>Titles of contribution $contribution_code (ID: $contribution_id) updated manually.</b><BR/>\n";
+                $content .="Sentence case: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n";
+                $content .="Upper case: ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n";
+                $contribs_qa_data[$contribution_id]["title"]["date"]=time();
+                file_put_contents($cws_config['global']['data_path']."/contribs_qa.json",json_encode($contribs_qa_data));
+                $ret=update_contribution_title($contribution_id,$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+                if ($ret["value"]){
+                    $content .=$ret["content"];
+                    $req["title"]=$contribs_qa_data[$contribution_id]["title"]["sentence_case"];
+                } else {
+                    $content .=$ret["content"];
+                }
+                $content .="<BR/>\n";
+            } //if ($_POST["action"]=="update_title")
+        } //if (array_key_exists("action", $_POST)){
+    }//POST form
+
+
     $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+    if (str_contains($_SERVER["QUERY_STRING"],"update_title")){
+        if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
+            $sentece_case=$contribs_qa_data[$contribution_id]["title"]["sentence_case"];
+            $upper_case=$contribs_qa_data[$contribution_id]["title"]["upper_case"];
+        } else {
+            $sentece_case=ucfirst($req["title"]);
+            $upper_case=strtoupper($req["title"]);
+        } 
+        $content .="<b>Updating the title of contribution $contribution_code (ID: $contribution_id) manually.</b><BR/>\n";
+        $content .="<form method='POST' action='custom_template.php?contribution_id=".$contribution_id."'>\n";
+        $content .="<INPUT type='hidden' name='contribution_id' value='".$contribution_id."'>\n";        
+        $content .="<INPUT type='hidden' name='action' value='update_title'>\n";        
+        $content .="Title of your contribution in <A HREF='https://www.scribbr.com/academic-writing/sentence-case/'>sentence case</A> (for indico):  <input type='text' name='sentence_case' size=100 value='".$sentece_case."'><BR/>\n";        
+        $content .="Title in upper case (for the paper): <input type='text' name='upper_case' size=100 value='".$upper_case."'><BR/>\n";
+        $content .="<input type='submit' value='Save modified title'><BR/>\n";
+        $content .="</form>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $T->set( 'content', $content );
+        echo $T->get();
+        exit;
+    }
     if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
             $content .="Title of your contribution in <A HREF='https://www.scribbr.com/academic-writing/sentence-case/'>sentence case</A> (for indico): ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n";
             $content .="Title in upper case (for the paper): ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n";
@@ -213,7 +269,7 @@ if (!($contribution_id)){
     $content .="<td>";
     $content .="<A HREF='custom_template_file.php?contribution_id=".$contribution_id."&type=word'>MS Wordfile</A><BR/>\n";    
     $content .="</td>";
-    $content .="<tr><td colspan=2>Note:<i> If your LaTeX install is more than a few years old, you may be using an old version of <tt>siunitx<\tt>. In this case you will need to add the following command after <tt>\begin{document}</tt>:</i><BR/><tt>\ifdefined\qty  \\else \\newcommand{\qty}{\SI} \\fi</tt></td><td></td></tr>\n";
+    $content .="<tr><td colspan=2>Note:<i> If your LaTeX install is more than a few years old, you may be using an old version of <tt>siunitx</tt>. In this case you will need to add the following command after <tt>\begin{document}</tt>:</i><BR/><tt>\ifdefined\qty  \\else \\newcommand{\qty}{\SI} \\fi</tt></td><td></td></tr>\n";
     $content .="</tr>";
     
     /*

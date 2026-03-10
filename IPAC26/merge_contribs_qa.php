@@ -20,11 +20,27 @@ require_lib( 'indico', '1.0' );
 
 require_once('ipac26_tools.php');
 
-    $local_contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
-    $remote_contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+$options=array(
+    "ssl"=>array(
+        "verify_peer"=>false,
+        "verify_peer_name"=>false,
+    ),
+);  
 
+
+$local_contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
+$remote_data=file_get_contents("https://lal.delerue.org/JICT/data/contribs_qa.json", false, stream_context_create($options));
+if ($remote_data){
+    $remote_contribs_qa_data=json_decode($remote_data, true);
+} else {
+    die("Error fetching remote data");
+}
+    
+print("".count($remote_contribs_qa_data)." entries in remote data<BR/>\n");
+print("".count($local_contribs_qa_data)." entries in local data<BR/>\n");
 
 foreach ($remote_contribs_qa_data as $contribution_id => $contribution_qa_data){
+    print("Processing contribution $contribution_id<BR/>\n");
     if (!isset($local_contribs_qa_data[$contribution_id])){
         $local_contribs_qa_data[$contribution_id]=$contribution_qa_data;
         print("Adding contribution $contribution_id to local data<BR/>\n");
