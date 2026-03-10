@@ -98,9 +98,9 @@ if (array_search("ADM",$user["roles"])){
 if (!($contribution_id)){
     //$content .="No contribution ID passed.<BR/>\n";
     $content .="<center><H2>Contributions for ".$user["first_name"]." ".$user["last_name"]."</H2></center>\n";
-    $req =$Indico->request( "/event/{id}/contributions/mine", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' =>true ) );
+    $req =$Indico->request( "/event/{id}/contributions/mine", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' =>true , 'use_session_token' => true ) );
     print("<!--- req size: ".strlen(json_encode($req))." bytes --->\n");
-    var_dump($req);
+    //var_dump($req);
     $matchtxt='#/event/([0-9]+)/contributions/([0-9]+)/\">(.+)</a>#';
     $returnValue = preg_match_all($matchtxt, $req, $matches);
     print("<!--- \n");
@@ -136,7 +136,7 @@ if (!($contribution_id)){
     $content .="<BR/>\n";
 
 } else {
-    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
+    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , , 'use_session_token' => true) );
     if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
         $contribution_code=$req["code"];
     } else {
