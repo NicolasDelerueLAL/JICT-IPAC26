@@ -361,7 +361,7 @@ function check_contribution_title_case($contribution_id,$retry=false){
     global $contribs_qa_data;
     global $cws_config;
 
-    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
+    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
 
     print("Title: ".$req["title"]."<BR/>\n");
     $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
@@ -511,7 +511,7 @@ function check_contribution_title_case($contribution_id,$retry=false){
 function update_contribution_title($contribution_id,$new_title){
     global $Indico, $contribs_qa_data, $cws_config;
     //Get necessary information to update the contribution
-    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
+    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
 
     $matches=[];
     $matchtxt='/name="person_link_data" value="(.*)">/';
@@ -531,7 +531,7 @@ function update_contribution_title($contribution_id,$new_title){
     }
     $post_data["title"]=$new_title;
     $ret=[];
-    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
+    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
     if (is_array($req)){
         if (array_key_exists("success",$req)){
             //print("Contribution updated successfully<BR/>\n");

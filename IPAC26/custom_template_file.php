@@ -47,7 +47,7 @@ if ((str_contains($_SERVER["QUERY_STRING"],"contribution_id"))&&(str_contains($_
     header("Location: http://".$_SERVER['HTTP_HOST'].str_replace("custom_template_file.php","custom_template.php",$_SERVER['REQUEST_URI']));
 }
 
-$req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) );
+$req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
 if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
     $contribution_code=$req["code"];
 } else {
