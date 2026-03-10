@@ -152,14 +152,20 @@ if (!($contribution_id)){
     //check that the user is allowed to access this contribution
     $indico_link="<A HREF='https://indico.jacow.org/event/".$cws_config['global']['indico_event_id']."/contributions/".$contribution_id."/' TARGET='_BLANK'>Indico entry for contribution $contribution_code</A>";
     $allowed=false;
+    print("Persons associated to this contribution:<BR/>\n");
+    var_dump($req["persons"]);
+    print("<BR/>\n");
+    print("User email: ".$user["email"]."<BR/>\n");
+    print("Oauth email: ".$_SESSION['indico_oauth']["user"]["email"]."<BR/>\n");
     foreach($req["persons"] as $author){
-        if ($author["email"]==$user["email"]){
+
+        if ($author["email"]==$_SESSION['indico_oauth']["user"]["email"]){
             $allowed=true;
             break;
         }
     }
     if (!($allowed)){
-        $content .="<b>You are not allowed to access this contribution. Please check that you are among the contributors of this contribution. If necessary, ask the submitte to update the $indico_link.</b>\n";
+        $content .="<b>You are not allowed to access this contribution. Please check that you are among the contributors of this contribution. If necessary, ask the submitter to update the $indico_link.</b>\n";
         $content .="<BR/>\n";
         $content .="<BR/>\n";
         $content .="<BR/>\n";
