@@ -73,7 +73,7 @@ if (str_contains($_SERVER["QUERY_STRING"],"contribution_id")){
 } else if (str_contains($_SERVER["QUERY_STRING"],"contribution_code")){
     $contribution_code=strtoupper($queryArray["contribution_code"]);
     $dictionnary=file_read_json($cws_config['global']['data_path']."/contribs_dictionnary.json",true);
-    if (array_key_exists($contribution_code, $dictionnary["contribution_code"])){
+    if (($dictionnary)&&(array_key_exists($contribution_code, $dictionnary["contribution_code"]))){
         $contribution_id=$dictionnary["contribution_code"][$contribution_code];
         $content .="Contribution ID: $contribution_id <BR/>\n";
         print("Contribution ID: $contribution_id <BR/>\n");
