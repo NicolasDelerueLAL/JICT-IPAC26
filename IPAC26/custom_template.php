@@ -136,7 +136,7 @@ if (!($contribution_id)){
     $content .="<BR/>\n";
 
 } else {
-    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , , 'use_session_token' => true) );
+    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true) );
     if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
         $contribution_code=$req["code"];
     } else {
