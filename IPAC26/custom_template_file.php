@@ -21,6 +21,7 @@ require_lib( 'indico', '1.0' );
 //require( 'ipac26_tools.php' );
 require_once('custom_template_functions.php');
 
+$logfile="../data/custom_template_generation.log";
 $latexfile="templates/jacow_latex_template.tex";
 $latexbibfile="templates/jacow_latex_template_bib.tex";
 $wordfile="templates/JACoW_MSWord_ipac26_custom.docx";
@@ -56,6 +57,10 @@ if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
 }
 //var_dump($req);
 $author_block =create_title_author_block($req);
+
+$logfile_handle=fopen($logfile,'a');
+fwrite($logfile_handle,"".date("Y-m-d H:i:s")."; type: ".$type."; id: ".$contribution_id."; code: ".$contribution_code."  \n");
+fclose($logfile_handle);
 
 if (($type=="latex")||($type=="latex-bib")){
     if ($type=="latex"){

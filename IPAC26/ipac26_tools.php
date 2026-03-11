@@ -105,7 +105,12 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
     //$all_contributions=json_decode($req_contributions,true);
     $all_contributions=$req_contributions;
     foreach($all_contributions as $contribution){
-        $contribution["MC"]=substr($contribution["track"]["code"],0,3);
+        if (!$contribution["track"]["code"]){
+            $contribution["MC"]="XXX";
+            print("Error determining track code for contribution ID: ".$contribution["id"]."<BR/>\n");
+        } else {
+            $contribution["MC"]=substr($contribution["track"]["code"],0,3);
+        }
         //$contribution["track_name"]=$contribution["track"]["code"]." - ".$contribution["track"]["title"];
         $contribution["track_name"]=$contribution["track"]["title"];
 
@@ -555,5 +560,54 @@ function update_contribution_title($contribution_id,$new_title){
         return $ret;
     }
 } //function update_contribution_title($contribution_id,$new_title)
+
+
+function assign_contribution_code($contribution_id,$code){
+    global $Indico, $contribs_qa_data, $cws_config;
+    //Get necessary information to update the contribution
+    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+
+    $matches=[];
+    $matchtxt='/name="person_link_data" value="(.*)">/';
+    $returnValue = preg_match_all($matchtxt, $req_html["html"], $matches);
+    $person_link_data=html_entity_decode($matches[1][0]);
+
+    $Indico->api->config('header_content_type', 'application/json');
+
+
+    $post_data = [];
+    $post_data["person_link_data"]=$person_link_data;
+    $values=[  "title", "description" ];
+    foreach($values as $value) {
+        if (isset($req_json[$value])) {
+            $post_data[$value] = $req_json[$value];
+        }
+    }
+    $post_data["code"]=$code;
+    $ret=[];
+    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+    if (is_array($req)){
+        if (array_key_exists("success",$req)){
+            //print("Contribution updated successfully<BR/>\n");
+            $ret["content"]="Contribution updated successfully<BR/>\n";
+            $ret["value"]=true;
+            return $ret;
+        } else {
+            print("Error updating contribution<BR/>\n");
+            //var_dump($req);
+            //die("Error");
+            $ret["content"]="Error updating contribution<BR/>\n";
+            $ret["value"]=false;
+            return $ret;
+        }
+    } else {
+        print("Error updating contribution<BR/>\n");
+        //var_dump($req);
+        //die("Error");
+        $ret["content"]="Error updating contribution<BR/>\n";
+        $ret["value"]=false;
+        return $ret;
+    }
+} //function assign_contribution_code($contribution_id,$code)
 
 ?>
