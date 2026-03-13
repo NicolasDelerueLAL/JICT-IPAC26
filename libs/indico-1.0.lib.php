@@ -237,10 +237,13 @@ class INDICO extends JICT_OBJ {
 			$this->requests_api_count ++;
 			$t0 =time();
 			if ($verbose) $this->verbose( "# $_method ($cache_time) $req... ", 2 );
-			if (array_key_exists('use_session_token',$_rqst_cfg)) {
+			if ((array_key_exists('use_session_token',$_rqst_cfg))&&($_rqst_cfg['use_session_token'])) {
 				//Without that the request's auther will be the app oauth token's owner
-				//print("Overriding authorization header with session token\n"); 
-			    $this->api->config( 'authorization_header', 'Bearer ' .$_SESSION['indico_oauth']['token'] );	
+				if ($verbose) print("Overriding authorization header with session token\n" .$_SESSION['indico_oauth']['token']."\n"); 
+			    $this->api->config( 'authorization_header', 'Bearer ' .$_SESSION['indico_oauth']['token'] );				
+			} else if ((array_key_exists('use_indico_token',$_rqst_cfg))&&($_rqst_cfg['use_indico_token'])){
+				if ($verbose) print("Overriding authorization header with indico token\n" .$this->cfg['indico_token']."\n"); 
+			    $this->api->config( 'authorization_header', 'Bearer ' .$this->cfg['indico_token'] );				
 			}
 			
 			$this->data[$req] =$this->api->request( $req, $_method, $_data_request );
