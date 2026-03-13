@@ -35,6 +35,7 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
+check_lpr_rights();
 
 $Indico->load();
 
@@ -76,80 +77,10 @@ $content .="<BR/><BR/>\n";
 if (!($queryArray["contribution_id"])){
     die("No contribution ID given... Stop.");
 }
-$content .="<center><h2>Information about paper ".$queryArray["contribution_id"]."<BR/>\n";
+$content .="<center><h2>Information about paper ".$queryArray["contribution_id"]."</h2></center><BR/>\n";
 
 
-//for paper number
-$paper_val=-1;
-for($ploop=0;$ploop<count($all_papers);$ploop++){    
-    $paper=$all_papers[$ploop];    
-    if ($paper["contribution"]['id']==$queryArray["contribution_id"]){
-        $paper_val=$ploop;
-    }
-} //looking for the paper
-if ($paper_val==-1){
-    die("Unable to find paper with contribution ID ".$queryArray["contribution_id"]);
-}
-$paper=$all_papers[$paper_val];
-$contribution=$paper["contribution"];
-$content .=$paper["title"]."</h2></center>\n";
-
-//authors
-$paper["submitter"]=$contribution["submitter"]["full_name"]."<BR>\n".$contribution["submitter"]["affiliation"];
-$paper["authors"]="<ul>";
-foreach($paper["contribution"]["persons"] as $person){
-    $paper["authors"].="<li>";
-    $paper["authors"].=$person["full_name"]." - ".$person["author_type"]." - ".$person["affiliation"]."<BR/>";
-    $paper["authors"].="</li>";
-}
-$paper["authors"].="</ul>";
-
-
-$paper["revisions_history"]="<ol>";
-for ($irev=0;$irev<count($paper["revisions"]);$irev++){
-    $the_rev=$paper["revisions"][$irev];
-    $paper["revisions_history"].="<li>Revision ".($irev+1)." submitted on ".format_time($the_rev["submitted_dt"])."<BR/>\n";
-    if (count($the_rev["comments"])>0){
-        $paper["revisions_history"].="Comments:<BR/><ol>\n";
-        for ($icom=0;$icom<count($the_rev["comments"]);$icom++){
-            $the_comment=$the_rev["comments"][$icom];
-            $paper["revisions_history"].="<li>".format_time($the_comment["created_dt"])." - ".$the_comment["text"]."</li>\n";
-        }
-        $paper["revisions_history"].="</ol>\n";
-    }
-    $paper["revisions_history"].="</li>";
-} //for irev
-$paper["revisions_history"].="</ol>";
-
-
-
-$content .="<BR/><BR/>\n";
-//Format: ["indico field name" => "display name" ]
-$fields_to_display=[ 
-                    "abstract_id"=>"Abstract ID",
-                    "code"=>"code",
-                    "ids" => "IDs",
-                    "MC" => "MC", 
-                    "track" => "track", 
-                    "round" => "Round", 
-                    "status" => "Status" ,
-                    "title" => "Title",  
-                    "abstract_text" => "Abstract",  
-                    "submitter" => "Submitter",
-                    "author" => "author",  
-                    "affiliation" => "affiliation",  
-                    "authors" => "authors",
-                    "regions" => "Region(s)", 
-                    "reviewers" => "Reviewers", 
-                    "revisions_history" => "Revision history",
-                ];
-
-
-
-
-foreach($fields_to_display as $field_name=>$field_title){
-    $content .=$field_title." : ".$paper[$field_name]."<BR/>\n";
-} //for each field
+$content .= show_paper_info($queryArray["contribution_id"]);
 
 $content .="<hr>\n";
 
@@ -158,8 +89,6 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
     $content .="<A HREF='edit_paper.php?".$_SERVER["QUERY_STRING"]."&add_extra_reviewer=1'>Add extra reviewer</A><BR/>\n";
 } else{
     $content .="<center><h3>Add extra reviewer</h2></center>\n";
-
-
     //All participants files
     $all_persons=file_read_json($cws_config['global']['data_path']."/all_participants.json", true );
     if (!($all_persons)){
@@ -181,23 +110,30 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
 
     //check registered
     $not_registered=0;
+    $no_user_id=0;
     $n_possible_reviewers=0;
     if ((!($queryArray["ignore_registration"]))||($queryArray["ignore_registration"]==0)){
         for ($iperson=0;$iperson<count($all_persons);$iperson++){
             if (!($all_persons[$iperson]["registered_value"]==1)){
                 $not_registered+=1;
                 $all_persons[$iperson]["possible_reviewer"]=false;
-            } else{
+            }  else if (!(array_key_exists("user_id",$all_persons[$iperson]))){
+                print("Participant ".$person["name"]." has not user_id ");
+                $no_user_id+=1;
+                $all_persons[$iperson]["possible_reviewer"]=false;
+            } else {
                 if ($all_persons[$iperson]["possible_reviewer"]){
                     $n_possible_reviewers+=1;
                 }
             }
         } //for each person
-        $content .="Rejecting not registered: ".$not_registered."; Remaining: ".$n_possible_reviewers."<BR/>\n";
+        $content .="Rejecting not registered: ".$not_registered." or no user_id ".$no_user_id." ; Remaining: ".$n_possible_reviewers."<BR/>\n";
         $content .=" <A HREF='?".$_SERVER['QUERY_STRING']."&ignore_registration=1'>Click here to ignore registration information.</A><BR/>\n";
     } else {
         $content .=" <A HREF='?".$_SERVER['QUERY_STRING']."&ignore_registration=0'>Click here to use registration information.</A><BR/>\n";     
     }
+
+
 
     //check region
     if (($paper["regions"])&&((!($queryArray["ignore_region"]))||($queryArray["ignore_region"]==0))){
@@ -338,7 +274,7 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
 
     foreach($all_persons as $person){
         if ($person["possible_reviewer"]){
-            $person["assign_link"]="<A HREF='assign_paper.php?paper_id=".$paper["id"]."&paper_id=".$person["id"]."' >Assign to this reviewer</A>";
+            $person["assign_link"]="<A HREF='assign_paper.php?contribution_id=".$queryArray["contribution_id"]."&person_id=".$person["id"]."' >Assign to this reviewer</A>";
             $content .="<TR id=\"TR-".$person["id"]."\">\n"; 
             foreach ($person_fields as $field => $display){       
                 //echo "$field: ".$abstract[$field]." <BR/>\n"; 

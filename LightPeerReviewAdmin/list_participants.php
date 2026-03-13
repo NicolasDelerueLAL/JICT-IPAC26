@@ -29,6 +29,8 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
+check_lpr_rights();
+
 
 $Indico->load();
 
@@ -129,6 +131,7 @@ for ($icount=0;$icount<count($matches[0]);$icount++){
 }
 
 for ($iloop=0;$iloop<6;$iloop++){
+    $matches=[];
     $flags=0;
     if ($iloop==0){
         $matchtxt='#<i class="icon-ticket js-show-regforms [a-zA-Z]*" data-title="\s*(.*)';
@@ -147,9 +150,8 @@ for ($iloop=0;$iloop<6;$iloop++){
         $flags=PREG_OFFSET_CAPTURE;
     }    
     if ($iloop==5){
-        $matchtxt='#<td class="i-table edit-column thin-column">\s(\s.*)';
+        $matchtxt='#<td class="i-table edit-column thin-column">\s(\s.+)(\s.+)';
     }    
-    
     $matchtxt.='#';
     //print("matchtxt ".$matchtxt."\n");
     $returnValue = preg_match_all($matchtxt, $req_papers , $matches,$flags);
@@ -223,7 +225,7 @@ for ($iloop=0;$iloop<6;$iloop++){
         if ($iloop==4){
             //$all_persons[$icount]["roles_raw"]=$matches[0][$icount];
             //var_dump($matches);
-            for($icount=0;$icount<count($matches[0]);$icount++){
+            //for($icount=0;$icount<count($matches[0]);$icount++){
                 $all_persons[$icount]["roles"]=[];
                 $person=$matches[0][$icount];
                 //var_dump($person[1]);
@@ -326,16 +328,38 @@ for ($iloop=0;$iloop<6;$iloop++){
                     }
                     $all_persons[$icount]["author_MCs_txt"]=substr($all_persons[$icount]["author_MCs_txt"],0,strlen($all_persons[$icount]["author_tracks_txt"])-2);
                 }
-            }
+            //}
         }
         if ($iloop==5){
-            $all_persons[$icount]["person_data"]=$matches[0][$icount];
+            $all_persons[$icount]["edit_person"]=$matches[0][$icount];
+            //print("edit-person $matchtxt //");
+            //print_r($matches[0][$icount]);
+            //print("\n");
         }
         if ($iloop==6){
-            $all_persons[$icount]["edit_person"]=$matches[0][$icount];
+            //$all_persons[$icount]["edit_person"]=$matches[0][$icount];
+            print("edit-person 2 $matchtxt // ");
+            print_r($matches[0][$icount]);
+            print("\n");
         }
     }
 } //iloop
+
+$matchtxt='#"identifier":"EventPerson:([0-9]+)",(.*),"user_identifier":"User:([0-9]+):#';
+    //print("matchtxt ".$matchtxt."\n");
+$returnValue = preg_match_all($matchtxt, $req_papers , $matches,$flags);
+
+//var_dump($matches);
+for ($icount=0;$icount<count($matches[0]);$icount++){
+    for($iperson=0;$iperson<count($all_persons);$iperson++){
+        if ($all_persons[$iperson]["id"]==$matches[1][$icount]){
+            $all_persons[$iperson]["user_id"]=$matches[3][$icount];
+            //print("Person ".$all_persons[$iperson]["name"]." has user id ".$all_persons[$iperson]["user_id"]."\n");            
+            break;
+        }
+    }
+}
+
 //print("<BR/>\n<BR/>\n<BR/>\n<BR/>\n<BR/>\n");
 //print("Persons <BR/>\n");
 //var_dump($all_persons);

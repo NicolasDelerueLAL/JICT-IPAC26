@@ -28,6 +28,7 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
+check_lpr_rights();
 
 $Indico->load();
 
