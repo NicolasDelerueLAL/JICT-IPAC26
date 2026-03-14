@@ -310,6 +310,12 @@ function create_title_author_block($req,$indico_link=false){
     $returnValue["word"]["footnote"] = $word_footnote;
     $returnValue["word"]["abstract"] = $req["description"];
     $returnValue["word"]["footnote_lines"] = $word_footnote_lines;
+    //$returnValue["word"]["authors"] = "";
+    //$returnValue["word"]["title"] = "";
+    //$returnValue["word"]["footnote"] = "";
+    $returnValue["word"]["abstract"] = str_replace("&","&amp;",str_replace(mb_chr(0xA)," ",str_replace(mb_chr(0xD),"",$req["description"])));
+    //$returnValue["word"]["footnote_lines"] = 0;
+
     return $returnValue;
 } // function create_title_author_block
 ?>
