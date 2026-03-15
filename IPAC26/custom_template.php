@@ -137,7 +137,9 @@ if (!($contribution_id)){
 
 } else {
     $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true) );
-    if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
+    if (!$req){
+        die("Unable to get contribution ".$contribution_id);
+    } else if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
         $contribution_code=$req["code"];
     } else {
         $contribution_code="contribution_".$contribution_id;
@@ -170,6 +172,9 @@ if (!($contribution_id)){
             $allowed=true;
             break;
         }
+    }
+    if (!(empty(array_intersect(array ("SS","JAD"),$_SESSION['indico_oauth']["user"]["roles"])))){
+        $allowed=true;
     }
     if (!($allowed)){
         $content .="<b>You are not allowed to access this contribution. Please check that you are among the contributors of this contribution. If necessary, ask the submitter to update the $indico_link.</b>\n";
@@ -261,7 +266,7 @@ if (!($contribution_id)){
     $content .="<table width=80% border=1>\n";
     $content .="<tr><td colspan=3> <center><b>Templates for this contribution</b></center></td></tr>\n";
     $content .="<tr><td width=80% colspan=2><center>Latex files</center></td><td width=20% rowspan=2> <center>MS Word file </center></td></tr>\n";
-    $content .="<tr><td width=40%> <center>Using bibtex </center></td><td width=40%> <center>Not using bibtex</center></td></tr>\n";
+    $content .="<tr><td width=40%> <center> Not using bibtex </center></td><td width=40%> <center>Using bibtex </center></td></tr>\n";
     $content .="<tr>";
     $content .="<td>";
     $content .="<i>You need to download these files and place them in the same directory:</i><BR/>\n";

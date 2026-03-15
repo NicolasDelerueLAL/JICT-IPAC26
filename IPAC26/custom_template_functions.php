@@ -37,7 +37,7 @@ function get_initial($name,$spacer){
 } // function get_initial
 
 function create_title_author_block($req,$indico_link=false){
-    global $Indico,$cws_config;
+    global $Indico,$cws_config,$_SESSION;
     //To do:
     // - check for secondary affili
     // - Authors by full alphabetical order 
@@ -52,6 +52,33 @@ function create_title_author_block($req,$indico_link=false){
     if (!($contribs_qa_data)) {
         die("Unable to read contribs_qa_data.");
     }
+    $allowed=false;
+    foreach($req["persons"] as $author){
+        if ((array_key_exists("email", $author))&&($author["email"]==$_SESSION['indico_oauth']["user"]["email"])){
+            $allowed=true;
+            break;
+        }
+        if ((array_key_exists("email_hash", $author))&&($author["email_hash"]==hash('md5', $_SESSION['indico_oauth']["user"]["email"]))){
+            $allowed=true;
+            break;
+        }
+    }
+    if (!(empty(array_intersect(array ("SS","JAD"),$_SESSION['indico_oauth']["user"]["roles"])))){
+        $allowed=true;
+    }
+    if (!($allowed)){
+        $content ="<b>You are not allowed to access this contribution. Please check that you are among the contributors of this contribution. If necessary, ask the submitter to update the $indico_link.</b>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+
+        print($content );
+        exit;
+    }
+
     $contribution_id=$req["id"];
     if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
         $title_upper_case=$contribs_qa_data[$contribution_id]["title"]["upper_case"];
@@ -313,7 +340,18 @@ function create_title_author_block($req,$indico_link=false){
     //$returnValue["word"]["authors"] = "";
     //$returnValue["word"]["title"] = "";
     //$returnValue["word"]["footnote"] = "";
-    $returnValue["word"]["abstract"] = str_replace("&","&amp;",str_replace(mb_chr(0xA)," ",str_replace(mb_chr(0xD),"",$req["description"])));
+    $returnValue["word"]["title"] =  
+                                        str_replace("<","&lt;",
+                                        str_replace(">","&gt;",
+                                        str_replace("&","&amp;",
+                                        str_replace(mb_chr(0xA),"",
+                                        $word_title))));
+    $returnValue["word"]["abstract"] =  
+                                        str_replace("<","&lt;",
+                                        str_replace(">","&gt;",
+                                        str_replace("&","&amp;",
+                                        str_replace(mb_chr(0xA),"",
+                                        $req["description"]))));
     //$returnValue["word"]["footnote_lines"] = 0;
 
     return $returnValue;
