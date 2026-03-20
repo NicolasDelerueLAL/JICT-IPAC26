@@ -67,20 +67,27 @@ function remove_editor_from_contact_info(){
  ));
 }  //remove_editor_from_contact_info()
 
-function load_abstracts($disable_cache=false){
+function load_abstracts(){
     global $Indico;
     global $abstracts,$all_abstracts;
     $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =$disable_cache;
+    $_rqst_cfg['disable_cache'] =false;
     //$_rqst_cfg['disable_cache'] =true;
     $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
     $abstracts=[];
     //var_dump(json_decode($req_abstracts,true));
     //var_dump(json_decode($req_abstracts,true)['abstracts']);
-    //var_dump($req_abstracts);
     //var_dump($req_abstracts['abstracts']);
     //$all_abstracts=json_decode($req_abstracts,true)['abstracts'];
-    $all_abstracts=$req_abstracts['abstracts'];
+    if (is_array($req_abstracts)){
+        $all_abstracts=$req_abstracts['abstracts'];
+    } else if (json_validate($req_abstracts)){
+        $all_abstracts=json_decode($req_abstracts,true)['abstracts'];
+    } else {
+        print("Unable to decode req_abstracts <BR/>\n");
+        var_dump($req_abstracts);
+        die("Unable to decode req_abstracts ");
+    }
     foreach($all_abstracts as $abstract){
         $abstracts[$abstract["id"]]=$abstract;
     }
@@ -99,6 +106,10 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
     }
     //$_rqst_cfg['disable_cache'] =true;
     $affiliation_fixes=file_read_json($cws_config['global']['data_path']."/affiliation_fixes.json",true);
+    if (!($affiliation_fixes)){
+        print("Unable to read ".$cws_config['global']['data_path']."/affiliation_fixes.json");
+        $affiliation_fixes=[];
+    }
     $req_contributions =$Indico->request( "/event/{id}/manage/contributions/contributions.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => $disable_contributions_cache, 'cache_time' => $cache_time)  );
     $contributions=[];
     $contributions_by_abs_id=[];
@@ -107,7 +118,7 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
     foreach($all_contributions as $contribution){
         if (!$contribution["track"]["code"]){
             $contribution["MC"]="XXX";
-            print("Error determining track code for contribution ID: ".$contribution["id"]."<BR/>\n");
+            print("<!--- Error determining track code for contribution ID: ".$contribution["id"]." --->\n");
         } else {
             $contribution["MC"]=substr($contribution["track"]["code"],0,3);
         }
@@ -228,6 +239,96 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
 }// load_contributions
 
 
+function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
+    print("<!--- send_email_to_eventperson --->\n");
+    global $Indico;
+
+    $post_data=array(
+        "sender_address" => $sender_email,
+        "subject" => $subject, 
+        "body" => $body,
+        "bcc_addresses" => $bcc_address_array ,
+        "copy_for_sender" => $copy_for_sender ,
+        "role_id" => array() ,
+        "persons" => array( $eventPerson ),
+        "no_account" => false,
+        "not_invited_only" => false, 
+    );
+    //var_dump($post_data);
+    $Indico->api->config('header_content_type', 'application/json');
+
+    $req =$Indico->request( "/event/{id}/manage/api/persons/email/send", 'POST', $post_data,  array( 'return_data' =>true, 'quiet' => false , 'use_session_token' => $use_session_token, 'use_indico_token' => $use_indico_token ) );
+    //print("<BR/>\n");
+    //print("Send email:<BR/>\n");
+    //var_dump($req);
+    if ((is_array($req))&&(array_key_exists("count",$req))){
+        print("<!--- Message(s) sent: ".$req["count"]." --->\n");
+        return $req["count"];
+    } else {
+        print("<!--- Message(s) NOT sent: ".$req["count"]." --->\n");
+        print("<!--- \n");
+        print("Req: \n");
+        var_dump($req);
+        print(" --->\n");
+        return false;
+    }
+}//send_email_to_eventperson
+
+
+
+function send_email_file_to_eventperson($file,$eventPerson,$sender_email,$copy_for_sender,$contribution=null,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
+    global $user;
+    global $cws_config;
+    //print("<!--- send_email_file_to_eventperson --->\n");
+    if ($contribution){
+        $filename=$cws_config['global']['messages_path']."/".$file;
+        if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
+        $message=file_get_contents($filename);
+        $matches=[];
+        $matchtxt='/##([a-zA-Z=@_:]+)##/';
+        $returnValue = preg_match_all($matchtxt, $message, $matches);
+        foreach($matches[1] as $thematch){
+            if (substr($thematch,0,1)=="="){
+                if (str_contains($thematch,":")){
+                    $fields=explode(":",substr($thematch,1));
+                    //var_dump($fields);
+                    if (count($fields)==2){
+                        $newvalue=$contribution[$fields[0]][$fields[1]];
+                    } else if (count($fields)==3){
+                        $newvalue=$contribution[$fields[0]][$fields[1]][$fields[2]];
+                    }
+                } else {
+                    $newvalue=$contribution[substr($thematch,1)];
+                }
+                $message=str_replace("##".$thematch."##",$newvalue,$message);
+            } else if (substr($thematch,0,1)=="@"){
+                if (!$user){
+                    die("User is not defined");
+                }
+                if (str_contains($thematch,":")){
+                    $fields=explode(":",substr($thematch,1));
+                    //var_dump($fields);
+                    if (count($fields)==2){
+                        $newvalue=$user[$fields[0]][$fields[1]];
+                    } else if (count($fields)==3){
+                        $newvalue=$user[$fields[0]][$fields[1]][$fields[2]];
+                    }
+                } else {                    
+                    $newvalue=$user[substr($thematch,1)];
+                }
+                $message=str_replace("##".$thematch."##",$newvalue,$message);
+            }
+        }
+
+        $subject=substr($message,0,strpos($message,"\n"));
+        //print("Subject: $subject <BR/>\n");
+        $body=str_replace("\n","<BR/>\n",substr($message,strpos($message,"\n")+1));
+        return send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array,$use_session_token,$use_indico_token);
+    } else {
+        print("Contribution is null!<BR/>\n");
+        return false;
+    }
+}
 
 function send_email_to_participant($subject,$body,$recipient_email,$sender_email,$copy_for_sender){
     global $Indico;
@@ -275,8 +376,11 @@ function send_email_file_to_contributor_as_editor($file,$recipient_role,$contrib
 
 
 function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null){
+    global $cws_config;
     if ($contribution){
-        $message=file_get_contents("messages/".$file);
+        $filename=$cws_config['global']['messages_path']."/".$file;
+        if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
+        $message=file_get_contents($filename);
         $matches=[];
         $matchtxt='/##([a-zA-Z=_:]+)##/';
         $returnValue = preg_match_all($matchtxt, $message, $matches);
@@ -358,7 +462,33 @@ function send_email_to_contributor($subject,$body,$recipient_role,$contribution_
     }
 }//function send_email_to_contributor($subject,$body,$recipient_role,$contribution_id,$sender_email,$copy_for_sender){
 
+function get_contribution($contribution_id,$use_session_token=true){
+    global $Indico;
+    //global $cws_config;
 
+    $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token ) );
+    if (!$req["title"]){
+        print("Getting contribution ".$contribution_id." failed.");
+        return false;
+    }
+    return $req;
+    //var_dump($req);
+    //print("Title: ".$req["title"]."<BR/>\n");
+} //get_contribution
+
+function get_paper($contribution_id,$use_session_token=true){
+    global $Indico;
+    print("<!--- get_paper $contribution_id --->\n");
+    //global $cws_config;
+    $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id, 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token ) );
+    //var_dump($req);
+    //print("Title: ".$req["contribution"]["title"]."<BR/>\n");
+    if (!$req["contribution"]["title"]){
+        print("Getting paper for contribution ".$contribution_id." failed. (in get contribution)");
+        return false;
+    }
+    return $req;
+} //get_contribution
 
 
 function check_contribution_title_case($contribution_id,$retry=false){
@@ -609,5 +739,275 @@ function assign_contribution_code($contribution_id,$code){
         return $ret;
     }
 } //function assign_contribution_code($contribution_id,$code)
+
+
+function comment_paper($contribution_id,$comment,$use_session_token=true,$use_indico_token=false){
+    global $Indico;
+    $post_data=array(
+        "comment" => $comment,
+        "visibility" => "judges" , 
+    );
+    //print("\ncommenting: $contribution_id\n");
+    if ($use_indico_token){
+        $use_session_token=false;
+    }
+    $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id."/comment", 'POST', $post_data , array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token ) );
+    print("\ncomment:\n");
+    var_dump($req);
+}//comment_paper
+
+function get_search_token(){
+    global $Indico;
+    $contribution_id="14000";
+    $req =$Indico->request( "/event/{id}/manage/contributions/14000/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => true ) );
+    if (!(array_key_exists("js",$req))){
+        print("Check that contribution_id $contribution_id exists");
+    }
+    //https://indico.jacow.org/event/95/manage/contributions/14565/edit
+    $matches=[];
+    $matchtxt='#searchToken: "(.*)"#';
+    $returnValue = preg_match_all($matchtxt, $req["js"][2], $matches);
+    $searchToken=$matches[1][0];
+    print("<!--- search Token:".$searchToken." --->");
+    return $searchToken;
+} //function get_search_token()
+
+
+function get_userid_from_email($email,$token=false){
+    global $Indico;
+    if (!$token){
+        $token=get_search_token();
+    }
+    $req =$Indico->request( "/user/search/?email=".$email."&favorites_first=true&token=".$token, 'GET', array( ) , array( 'return_data' =>true, 'quiet' =>true ) );
+    if ($req["total"]==0){
+        print("<!--- No users found. Ask the user to create an indico account. --->\n");
+        return false;
+    } else if ($req["total"]>1){
+        print("<!--- Too many users found. Please check. --->\n");
+        return false;
+    } else {
+        return $req["users"][0]["identifier"];
+    }
+} //function get_userid_from_email($email)
+
+
+function update_participants(){
+    global $Indico;
+    global $contributions,$contributions_by_abs_id,$contributions_by_fr_id;
+
+    if (!($contributions_by_abs_id)){
+        print("Contributions must be loaded to update participants!");
+    }
+
+    print("<!--- Updating participants list --->");
+    $_rqst_cfg=[];
+    $_rqst_cfg['disable_cache'] =false;
+    $req_persons =$Indico->request( "/event/{id}/manage/persons/", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
+    $matchtxt='#<tr id="person-([0-9]+)"#';
+    $returnValue = preg_match_all($matchtxt, $req_persons , $matches, PREG_OFFSET_CAPTURE);
+    $all_persons=[];
+    print("<!--- ". count($matches[0])." participants found --->\n");
+    for ($icount=0;$icount<count($matches[0]);$icount++){
+        $person=[];
+        $person["id"]=$matches[1][$icount][0];
+        $person["user_id"]="";
+        //print("Person: ".$matches[1][$icount][0]."\n");
+        //print("Person offs: ".$matches[1][$icount][1]."\n");
+
+        if ($icount<(count($matches[0])-1)){
+            $person_txt=substr($req_persons,$matches[0][$icount][1],$matches[0][$icount+1][1]-$matches[0][$icount][1]);
+        } else {
+            $person_txt=substr($req_persons,$matches[0][$icount][1]);
+        }
+        
+        //print("Person ".$person["id"].": \n");  
+        
+        //if (($icount>100)&&($icount<103)&&(1==0)){
+        //    var_dump($person_txt);
+        //}
+
+        $submatchlist=array(
+            "roles" => 'data-person-roles="(.*)"',
+            "registered" => 'i class="icon-ticket js-show-regforms [a-zA-Z]*" data-title="\s*(.*)',
+            "name_lowercase" => '<td class="i-table name-column" data-searchable="(.*)">',
+            "full_name" => '<td class="i-table name-column" data-searchable=".*">\s*(.*)',
+            "email"=>'<td class="i-table email-column">\s*(.*)',
+            "affiliation"=>'<td class="i-table affiliation-column">\s.*<span>([^/]+)</span>',
+            "editablePerson"=> 'setupEditEventPerson\(\s.*\s(.*)'
+        );
+        foreach( $submatchlist as $key => $txt){
+            $submatches=[];
+            $submatchtxt='#'.$txt.'#';
+            $returnValue = preg_match($submatchtxt, $person_txt , $submatches);
+            /*        
+            if (!(count($submatches)==2)){
+                print(" Warning: data matches ".count($submatches)." for $key \n");
+                var_dump($submatches);
+            }
+            */
+            if (count($submatches)>0){
+                $person[$key]=$submatches[1];
+            } else {
+                $person[$key]="";
+            }
+            //print($key." => ".$person[$key]." \n");
+        }
+        //roles
+        $person["roles"]=json_decode(str_replace('&#34;', '"', $person["roles"]),true);
+        //print("Roles \n");
+        //var_dump($person["roles"]);
+        //die("here");
+        $person["roles_txt"]="";
+        foreach($person["roles"] as $role){
+            if ((is_array($role))&&(array_key_exists("name",$role))){
+                $person["roles_txt"].=$role["name"].",";
+            }
+        }
+        if (array_key_exists("author",$person["roles"])){
+            $person["author_MCs"]=[];
+            $person["author_tracks"]=[];
+            $person["abstracts_id"]=[];
+            $person["contributions_id"]=[];
+            foreach($person["roles"]["author"]["elements"] as $elem){
+                //var_dump($elem);
+                if (str_contains($elem["url"],"/contributions/")){
+                    $contrib_fid=str_replace("/event/95/manage/contributions/?selected=","",$elem["url"]);
+                    $contrib_id=$contributions_by_fr_id[$contrib_fid];
+                } else if (str_contains($elem["url"],"/event/95/manage/abstracts/")){
+                    $abstract_id=str_replace("/","",str_replace("/event/95/manage/abstracts/","",$elem["url"])); 
+                    if (array_key_exists($abstract_id,$contributions_by_abs_id)){
+                        $contrib_id=$contributions_by_abs_id[$abstract_id];
+                    }
+                    //print(" abstract_id : $abstract_id \n");
+                    //print(" contrib_id : $contrib_id \n");
+                } else {
+                    print("elem is not contrib \n");
+                    var_dump($elem);
+                    $contrib_id=false;   
+                }
+                if ($contrib_id){
+                    $contribution=$contributions[$contrib_id];
+                    if ($contribution){
+                        //var_dump($contribution);
+                        $person["author_MCs"][]=$contribution["MC"];
+                        if ((array_key_exists("track",$contribution))&&($contribution["track"])&&(array_key_exists("code",$contribution["track"]))){
+                            $person["author_tracks"][]=$contribution["track"]["code"];
+                        }
+                        $person["abstracts_id"][]=$contribution["abstract_id"];
+                        $person["contributions_id"][]=$contribution["id"];
+                        //print("Contrib: ".$contribution["id"]."\n");
+                    } else {
+                        print("No contribution with id ".$contrib_id."\n");
+                    }
+                } else {
+                    //print("Contrib id not found...\n");                    
+                }
+
+            }
+            $person["author_MCs"]=array_unique($person["author_MCs"]);
+            $person["author_tracks"]=array_unique($person["author_tracks"]);
+            $person["author_MCs_txt"]="";
+            $person["author_tracks_txt"]="";
+            foreach($person["author_MCs"] as $mc){
+                $person["author_MCs_txt"].=$mc.",";
+            }
+            foreach($person["author_tracks"] as $mc){
+                $person["author_tracks_txt"].=$mc.",";
+            }
+        }
+
+        if (strlen($person["editablePerson"])>10){
+            $person["details"]=json_decode(substr($person["editablePerson"],0,strlen($person["editablePerson"])-1),true);
+            //var_dump($person["details"]);
+            if (array_key_exists("user_identifier",$person["details"])){
+                $matchesSub=[];
+                if (preg_match("#User:([0-9]+):#",$person["details"]["user_identifier"],$matchesSub)){
+                    $person["user_id"]=$matchesSub[1];
+                }
+            }
+            if (array_key_exists("affiliation",$person["details"])){
+                $person["affiliation"]=$person["details"]["affiliation"];
+                $person["affiliation_name"]=$person["details"]["affiliation"];
+            }
+            if ((array_key_exists("affiliation_meta",$person["details"]))&&($person["details"]["affiliation_meta"])){
+                $person["affiliation_country"]=$person["details"]["affiliation_meta"]["country_name"];
+                $person["affiliation_country_code"]=$person["details"]["affiliation_meta"]["country_code"];
+                if ($person["details"]["affiliation_meta"]["country_code"]){
+                    $person["affiliation_region"]=get_region($person["details"]["affiliation_meta"]["country_code"]);
+                } else {
+                    $person["affiliation_region"]="Unknown";
+                }
+            } else {
+                $person["affiliation_country"]="Unknown";
+                $person["affiliation_region"]="Unknown";
+            }
+            
+        } else {
+            $person["editable"]=false;
+        }
+        //registration    
+        if (preg_match("#The person has not registered yet#",$person["registered"],$matchesSub)){
+            $person["registered_value"]=0;
+            $person["registered"]=str_replace("The person has not registered yet","Not registered",$person["registered"]);
+        } else if (preg_match("#The person has registered in:#",$person["registered"],$matchesSub)){
+            $person["registered"]=str_replace("The person has registered in:","Is registered",$person["registered"]);            
+            $person["registered_value"]=1;
+        } else {
+            print("Registration not understood: ".$person["registered"]);
+            $person["registered_value"]=-9;
+        }
+
+        //var_dump($person);
+        //print("===============\n\n");
+        $all_persons[]=$person;
+        
+        /*
+        if ($icount>200){
+            die(" $icount reached");
+        }
+        */
+        
+    }
+    //print(count($matches[0]));
+    //var_dump($matches);
+
+    global $cws_config;
+    $fwret=file_write_json( $cws_config['global']['data_path']."/all_participants.json",$all_persons);
+    //echo "file write $fwret \n"; 
+
+} //function update_participants()
+
+function get_participants($force_update=false){
+    global $cws_config;
+    global $participants;
+
+    if (!($participants)){
+        $fname=$cws_config['global']['data_path']."/all_participants.json";
+        print("<!--- Participants file age $fname ".(time() - filemtime($fname))." --->");
+        if (($force_update)||((time() - filemtime($fname))>(60*60*24))){
+            update_participants();
+        }
+        $participants=file_read_json( $fname,true);
+    }
+    return $participants;
+} //function get_participants()
+
+function get_participant($key,$value){
+    $participants=get_participants();
+    $idx=array_search($value, array_column($participants, $key)); 
+    if ($idx){
+        return $participants[$idx];
+    } else {
+        return false;
+    }
+}//get_participant
+
+function get_full_name_from_userid($userid){
+    return get_participant("user_id",$userid)["full_name"]; 
+}//get_full_name_from_userid
+
+function get_full_name_from_eventid($eventid){
+    return get_participant("id",$eventid)["full_name"]; 
+}//get_full_name_from_userid
 
 ?>
