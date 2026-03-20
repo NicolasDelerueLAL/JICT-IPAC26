@@ -21,7 +21,7 @@ Could you let us know within the next two days if you accept to review this pape
 
 To allow the full reviewing to take place before the start of the conference, we would appreciate if you could submit your review within the next 7 days.
 
-To let us know, please click on the following link: <A HREF='https://lal.delerue.org/JICT/LightPeerReview/paper_acceptance.php?contribution_id=14565'>https://lal.delerue.org/JICT/LightPeerReview/paper_acceptance.php?contribution_id=14565</A> and answer the question on the form.
+To let us know, please click on the following link: <A HREF='https://jict.ipac26.org/LightPeerReview/paper_acceptance.php?contribution_id=14565'>https://jict.ipac26.org//LightPeerReview/paper_acceptance.php?contribution_id=14565</A> and answer the question on the form.
 
 Thank you for your help.
 
