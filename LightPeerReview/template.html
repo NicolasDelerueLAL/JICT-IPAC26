@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+	
+    <meta name="description" content="{title}">
+    <meta name="author" content="Nicolas Delerue">
+	
+	<meta name='theme-color' content='#343a40'>
+	
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name='mobile-web-app-capable' content='yes'>
+	
+	<link rel="shortcut icon" href="{path}{logo}" />	
+	    
+	<title>{title} {conf_name}</title>
+
+    <!-- Bootstrap core CSS -->
+	<link href="{path}dist/bootstrap-4.3.1/css/bootstrap.min.css" rel="stylesheet">
+	<link rel='stylesheet' href='{path}dist/fontawesome-free-6.3.0-web/css/all.css' type='text/css' />    
+	<link href="../style.css" rel="stylesheet">
+
+    <style>
+    div.paper {
+        page-break-inside: avoid;
+        margin-top: 0.5em;
+        margin-bottom: 2em;
+        border-top: 1px dotted #555;
+        _border: 4px solid white;
+    }
+
+    div.done,
+    div.done:hover {
+        background:rgb(134, 206, 152) !important;
+    }
+
+
+    div.paper:hover {
+        _border: 4px solid red;
+        background: rgb(255, 163, 163);
+    }
+
+    div.no-pdf {
+        border: 4px solid #555;
+        background: #ccc;
+        padding: 1em;
+        width: 18em;
+        color: red;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-family: monospace;
+    }
+
+    div.info {
+        font-family: 'Lato', Arial;
+        font-size: 10px;
+    }
+
+    code, title, div.title, authors, doneinfo {
+        display: block;
+        text-align: center;
+    }
+
+    code a {
+        color: white;
+    }
+
+    doneinfo, editor {
+        font-family: monospace;
+    }
+
+    doneinfo {
+        margin-bottom: 5px;
+        font-size: 12px;
+    }
+
+    wrong {
+        background: rgb(255, 252, 85);
+        display: inline;
+    }
+
+    code {
+        display: inline;
+        background: #555;
+        color: white;
+        width: 20em;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+        padding: 2px 10px 5px 10px;
+    }
+
+    button {
+        float: right;
+        display: none;
+        width: 6em;
+        text-align: center;;
+        border: none;
+        padding: 5px;
+    }
+
+
+
+    button:hover {
+        cursor: pointer;
+    }
+
+    button.refresh {
+        background: rgb(36, 82, 209);
+        color: white;
+    }
+
+    button.done {
+        background: rgb(19, 167, 56);
+        color: white;
+        float: left;
+    }
+
+    button.undone {
+        display: block;
+        background: rgb(209, 36, 172);
+        color: white;
+    }
+
+    div.title,
+    title {
+        font-weight: bold;
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+    }
+
+    authors {
+        margin-bottom: 4em;
+    }
+
+    @media print {    
+        .no-print, .no-print * {
+            display: none !important;
+        }
+
+        div.paper {
+            background: white !important;
+        }
+
+        button {
+            display: none !important;
+        }
+    }
+
+    </style>
+    <script>
+        //---------------------------------------------------------------------
+        function done( _pcode ) {
+            if (window.confirm( `${_pcode} is done?` )) {
+                document.location =`index.php?action=done&pcode=${_pcode}`;
+            }
+        }
+
+        //---------------------------------------------------------------------
+        function undone( _pcode ) {
+            if (window.confirm( `${_pcode} is done?` )) {
+                document.location =`index.php?action=undone&pcode=${_pcode}`;
+            }
+        }
+
+        //---------------------------------------------------------------------
+        function show_buttons( _pcode, _show ) {
+            if (_show) {
+                $(`#refresh_${_pcode}`).show();            
+                $(`#done_${_pcode}`).show();
+
+            } else {
+                $(`#refresh_${_pcode}`).hide();            
+                $(`#done_${_pcode}`).hide();            
+            }
+        }
+
+        //---------------------------------------------------------------------
+        function refresh( _pcode ) {
+            $.getJSON( 'index.php', { action: "refresh", pcode: _pcode } )
+                .done(function(obj) {
+                    if (obj.error) {
+                        console.log( 'DATA ERROR!' );
+                        return;
+                    }
+                    
+                    console.log( `Load data` );
+                    console.dir( obj );
+                    
+                    $(`#paper_${obj.pcode} div.title`).html( obj.title );
+                    $(`#paper_${obj.pcode} authors`).html( obj.authors );
+                    })
+                    
+                .fail(function(XMLHttpRequest, textStatus, errorThrown) {
+                    console.log( "load data FAIL!" );
+                    console.dir( XMLHttpRequest );
+                    console.dir( textStatus );
+                    console.dir( errorThrown );
+                });		        
+        }
+    </script>
+
+    {head}
+</head>
+<style>
+.sr-only {
+  position: absolute;
+  top: -30em;
+}
+
+table.sortable td,
+table.sortable th {
+  padding: 0.125em 0.25em;
+  width: 8em;
+}
+
+table.sortable th {
+  font-weight: bold;
+  border-bottom: thin solid #888;
+  position: relative;
+}
+
+table.sortable th.no-sort {
+  padding-top: 0.35em;
+}
+
+{column_width}
+
+table.sortable th button {
+  padding: 4px;
+  margin: 1px;
+  font-size: 100%;
+  font-weight: bold;
+  background: transparent;
+  border: none;
+  display: inline;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: left;
+  outline: none;
+  cursor: pointer;
+}
+
+table.sortable th button span {
+  position: absolute;
+  right: 4px;
+}
+
+table.sortable th[aria-sort="descending"] span::after {
+  content: "\2193";
+  color: currentcolor;
+  font-size: 100%;
+  top: 0;
+}
+
+table.sortable th[aria-sort="ascending"] span::after {
+  content: "\2191";
+  color: currentcolor;
+  font-size: 100%;
+  top: 0;
+}
+
+table.show-unsorted-icon th:not([aria-sort]) button span::after {
+  content: "\2195";
+  color: currentcolor;
+  font-size: 100%;
+  position: relative;
+  top: -3px;
+  left: -4px;
+}
+
+table.sortable td.num {
+  text-align: right;
+}
+
+table.sortable tbody tr:nth-child(odd) {
+  background-color: #ddd;
+}
+table.sortable tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* Focus and hover styling */
+
+table.sortable th button:focus,
+table.sortable th button:hover {
+  padding: 2px;
+  border: 2px solid currentcolor;
+  background-color: #e5f4ff;
+}
+
+table.sortable th button:focus span,
+table.sortable th button:hover span {
+  right: 2px;
+}
+
+table.sortable th:not([aria-sort]) button:focus span::after,
+table.sortable th:not([aria-sort]) button:hover span::after {
+  content: "\2193";
+  color: currentcolor;
+  font-size: 100%;
+  top: 0;
+}
+
+</style>
+<script>
+/*
+ *   This content is licensed according to the W3C Software License at
+ *   https://www.w3.org/Consortium/Legal/2015/copyright-software-and-document
+ *
+ *   File:   sortable-table.js
+ *
+ *   Desc:   Adds sorting to a HTML data table that implements ARIA Authoring Practices
+ */
+
+'use strict';
+
+class SortableTable {
+  constructor(tableNode) {
+    this.tableNode = tableNode;
+
+    this.columnHeaders = tableNode.querySelectorAll('thead th');
+
+    this.sortColumns = [];
+
+    for (var i = 0; i < this.columnHeaders.length; i++) {
+      var ch = this.columnHeaders[i];
+      var buttonNode = ch.querySelector('button');
+      if (buttonNode) {
+        this.sortColumns.push(i);
+        buttonNode.setAttribute('data-column-index', i);
+        buttonNode.addEventListener('click', this.handleClick.bind(this));
+      }
+    }
+
+    this.optionCheckbox = document.querySelector(
+      'input[type="checkbox"][value="show-unsorted-icon"]'
+    );
+
+    if (this.optionCheckbox) {
+      this.optionCheckbox.addEventListener(
+        'change',
+        this.handleOptionChange.bind(this)
+      );
+      if (this.optionCheckbox.checked) {
+        this.tableNode.classList.add('show-unsorted-icon');
+      }
+    }
+  }
+
+  setColumnHeaderSort(columnIndex) {
+    if (typeof columnIndex === 'string') {
+      columnIndex = parseInt(columnIndex);
+    }
+
+    for (var i = 0; i < this.columnHeaders.length; i++) {
+      var ch = this.columnHeaders[i];
+      var buttonNode = ch.querySelector('button');
+      if (i === columnIndex) {
+        var value = ch.getAttribute('aria-sort');
+        if (value === 'descending') {
+          ch.setAttribute('aria-sort', 'ascending');
+          this.sortColumn(
+            columnIndex,
+            'ascending',
+            ch.classList.contains('num')
+          );
+        } else {
+          ch.setAttribute('aria-sort', 'descending');
+          this.sortColumn(
+            columnIndex,
+            'descending',
+            ch.classList.contains('num')
+          );
+        }
+      } else {
+        if (ch.hasAttribute('aria-sort') && buttonNode) {
+          ch.removeAttribute('aria-sort');
+        }
+      }
+    }
+  }
+
+  sortColumn(columnIndex, sortValue, isNumber) {
+    function compareValues(a, b) {
+      if (sortValue === 'ascending') {
+        if (a.value === b.value) {
+          return 0;
+        } else {
+          if (isNumber) {
+            return a.value - b.value;
+          } else {
+            return a.value < b.value ? -1 : 1;
+          }
+        }
+      } else {
+        if (a.value === b.value) {
+          return 0;
+        } else {
+          if (isNumber) {
+            return b.value - a.value;
+          } else {
+            return a.value > b.value ? -1 : 1;
+          }
+        }
+      }
+    }
+
+    if (typeof isNumber !== 'boolean') {
+      isNumber = false;
+    }
+
+    var tbodyNode = this.tableNode.querySelector('tbody');
+    var rowNodes = [];
+    var dataCells = [];
+
+    var rowNode = tbodyNode.firstElementChild;
+
+    var index = 0;
+    while (rowNode) {
+      rowNodes.push(rowNode);
+      var rowCells = rowNode.querySelectorAll('th, td');
+      var dataCell = rowCells[columnIndex];
+
+      var data = {};
+      data.index = index;
+      data.value = dataCell.textContent.toLowerCase().trim();
+      if (isNumber) {
+        data.value = parseFloat(data.value);
+      }
+      dataCells.push(data);
+      rowNode = rowNode.nextElementSibling;
+      index += 1;
+    }
+
+    dataCells.sort(compareValues);
+
+    // remove rows
+    while (tbodyNode.firstChild) {
+      tbodyNode.removeChild(tbodyNode.lastChild);
+    }
+
+    // add sorted rows
+    for (var i = 0; i < dataCells.length; i += 1) {
+      tbodyNode.appendChild(rowNodes[dataCells[i].index]);
+    }
+    recreate_abstract_dict();    
+  }
+
+  /* EVENT HANDLERS */
+
+  handleClick(event) {
+    var tgt = event.currentTarget;
+    this.setColumnHeaderSort(tgt.getAttribute('data-column-index'));
+  }
+
+  handleOptionChange(event) {
+    var tgt = event.currentTarget;
+
+    if (tgt.checked) {
+      this.tableNode.classList.add('show-unsorted-icon');
+    } else {
+      this.tableNode.classList.remove('show-unsorted-icon');
+    }
+  }
+}
+
+// Initialize sortable table buttons
+window.addEventListener('load', function () {
+  var sortableTables = document.querySelectorAll('table.sortable');
+  for (var i = 0; i < sortableTables.length; i++) {
+    new SortableTable(sortableTables[i]);
+  }
+});
+
+
+</script>
+<body>
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+    <div class="navbar-values col-6 col-md-2" id='conf_name'><a href='{index_url}'>JICT</a> {conf_name}</div>
+    <div class="navbar-values col-6 col-md-4" id='title'>{title}</div>
+    <div class="navbar-values col-6 col-md-2 text-right" id='user'>{user}</div>
+</nav>
+<nav class="navbar navbar-dark fixed-bottom bg-dark flex-md-nowrap p-0 shadow">
+    <div class="navbar-values col-6 col-md-2"></div>
+    <div class="navbar-values col-6 col-md-2"></div>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <main role="main" class="col-md-12 ml-sm-auto col-lg-12">    
+            {content}
+        </main>
+    </div>
+</div>
+<script src="{path}/dist/jquery-3.4.1/jquery.min.js"></script>
+<script src="{path}/dist/bootstrap-4.3.1/js/bootstrap.bundle.min.js"></script>
+{scripts}
+<script>
+{js}    
+</script>
+</body>
+</html>
