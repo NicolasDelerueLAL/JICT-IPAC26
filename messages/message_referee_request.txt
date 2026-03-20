@@ -1,0 +1,30 @@
+Invitation to review a paper for the IPAC'26 Light Peer Reviewing
+Dear {first_name} {last_name},
+
+I am contacting you regarding the IPAC'26 Light Peer Review (LPR).
+
+We would appreciate your review of the manuscript described below, which has been submitted to the IPAC'26 LPR.
+
+Please read the abstract and let us know promptly whether or not you will be able to review the manuscript.
+
+Title: ##=title##
+Contribution id: <A HREF='https://indico.jacow.org/event/95/contributions/##=id##/'>##=id##   (# ##=friendly_id##)</A>
+
+Primary author: ##=primary_author_name##
+
+Abstract:
+##=description##
+
+Please note that this "light" refereeing is designed to be adequate for a conference proceedings volume: the focus is on ensuring correctness while accepting work on incremental progress, improved technology, new designs etc. in accelerator science. Please adapt your criteria to the acceptance questions in the web form and the guidelines posted at <A HREF='https://ipac-docs.jacow.org/Paper/LPRreviewer/'>https://ipac-docs.jacow.org/Paper/LPRreviewer/</A> .
+
+Could you let us know within the next two days if you accept to review this paper or if you are not able to accept it? This will allow us to quickly re-assign this paper to another referee if needed.
+
+To allow the full reviewing to take place before the start of the conference, we would appreciate if you could submit your review within the next 7 days.
+
+To let us know, please click on the following link: <A HREF='https://lal.delerue.org/JICT/LightPeerReview/paper_acceptance.php?contribution_id=14565'>https://lal.delerue.org/JICT/LightPeerReview/paper_acceptance.php?contribution_id=14565</A> and answer the question on the form.
+
+Thank you for your help.
+
+Yours sincerely,
+##@full_name##, 
+On behalf of the IPAC'26 Light Peer Review Scientific Publication Board

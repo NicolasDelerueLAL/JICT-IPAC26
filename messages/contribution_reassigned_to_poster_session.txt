@@ -1,0 +1,17 @@
+[IPAC'26] Reassignement of your contribution: {contribution_title}
+Dear {first_name} {last_name},
+
+Thank you for submitting a contribution to IPAC'26.
+
+As requested your contribution {contribution_id}: "{contribution_title}" accepted as ##=type:name## has been rescheduled.
+
+Your poster is now scheduled on {contribution_schedule}.
+
+A new contribution code has been assigned: {contribution_code}.
+
+You can see all your contributions to IPAC'26 at <A HREF='https://indico.jacow.org/event/95/contributions/mine'>https://indico.jacow.org/event/95/contributions/mine</A>.
+
+Best wishes,
+
+Nicolas Delerue
+(IPAC'26 Editor in chief)
