@@ -45,13 +45,47 @@ if (!($queryArray["contribution_id"])){
     die("No contribution ID given... Stop.");
 }
 
+
+
+
+
+
+$T =new TMPL( $cfg['template'] );
+$T->set([
+    'style' =>'main { font-size: 22px; } main ul { margin: 20px; }',
+    'title' =>$cfg['name'],
+    'logo' =>$cfg['logo'],
+    'conf_name' =>$cfg['conf_name'],
+    'user' =>__h( 'small', $user['full_name'] ),
+    'path' =>'../',
+    'head' =>"<link rel='stylesheet' type='text/css' href='../page_edots/colors.css' />
+    <link rel='stylesheet' type='text/css' href='style.css' />",
+    'scripts' =>"",
+    'js' =>false
+    ]);
+
+
+
+$content="";
+
 //print("user\n");
 //var_dump($user);
 $this_person=get_person($user);
-print("<!--- ");
-print("\nThis person user_id : ".$this_person["user_id"]."\n\n\n\n");
-print("\n--->\n");
 
+if ($queryArray["force_user_by_email"]){
+    check_lpr_rights();
+    print("Forcing user to ". $queryArray["force_user_by_email"]."\n");
+    load_contributions();
+    $content .= "<BR/><b>Forcing reviewer acceptance on behalf of ".$queryArray["force_user_by_email"]."!</b><BR/>\n";
+    $this_person=get_participant("email",$queryArray["force_user_by_email"]);
+    $content .= "\nThis person user_id : ".$this_person["user_id"]."\n\n";
+    $content .= "<BR/>\n";
+    $content .= "<BR/>\n";
+}
+
+print("<!--- ");
+print("\nThis person user_id : ".$this_person["user_id"]."\n\n");
+print("\n--->\n");
 
 $paper_reviewer=get_paper_reviewers_status($queryArray["contribution_id"]);
 
@@ -73,23 +107,6 @@ if (!($contribution)){
 }
 
 
-$T =new TMPL( $cfg['template'] );
-$T->set([
-    'style' =>'main { font-size: 22px; } main ul { margin: 20px; }',
-    'title' =>$cfg['name'],
-    'logo' =>$cfg['logo'],
-    'conf_name' =>$cfg['conf_name'],
-    'user' =>__h( 'small', $user['full_name'] ),
-    'path' =>'../',
-    'head' =>"<link rel='stylesheet' type='text/css' href='../page_edots/colors.css' />
-    <link rel='stylesheet' type='text/css' href='style.css' />",
-    'scripts' =>"",
-    'js' =>false
-    ]);
-
-
-
-$content="";
 $content .= "<BR/><BR/>\n";
 
 $content .="Contribution: ".$queryArray["contribution_id"]."<BR/>\n";
@@ -101,7 +118,7 @@ $content .="<BR/>\n";
 
 if ($_POST){
     $sender="peer-review@ipac26.org";
-    $bcc_address_array=array( "peer-review@ipac26.org" );
+    $bcc_address_array=array( "peer-review@ipac26.org" , "nicolas.delerue@cnrs.fr"  );
     $lpr_manager="EventPerson:35761";
     if ($_POST["action"]=="accept"){
         assign_reviewer_to_paper($queryArray["contribution_id"], $this_person["user_id"]);
@@ -132,7 +149,14 @@ if ($_POST){
     //$content .="Thanks you for your help with IPAC'26 Light Peer Review process. Will you be able to review the contribution described above?<BR/>\n";
 
     $content .="Thank you for your help with IPAC'26 Light Peer Review process.  As a reviewer, your job is to review the submitted papers and to propose that the paper be accepted, be rejected or be corrected by its author. The LPR manager will act as Judge, taking your feedback into account when deciding what to do.  We require a Ph.D. equivalent self-assessed experience for taking care of this task. More information will be sent to you after acceptance. Will you be able to review the contribution described above? <BR/>\n";
-    $content .="<form method='POST' action='paper_acceptance.php?contribution_id=".$queryArray["contribution_id"]."'>\n";
+    $action_url="paper_acceptance.php?contribution_id=".$queryArray["contribution_id"];
+    if (str_contains($_SERVER["QUERY_STRING"],"debug")){
+        $action_url.="&debug";
+    }
+    if ($queryArray["force_user_by_email"]){
+        $action_url.="&force_user_by_email=".$queryArray["force_user_by_email"];
+    }
+    $content .="<form method='POST' action='$action_url'>\n";
     $content .="<INPUT type='hidden' name='contribution_id' value='".$queryArray["contribution_id"]."'>\n";
 
     $content .="<INPUT type='radio' name='action' value='accept'> I accept to review this contribution.<BR/>\n";
