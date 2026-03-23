@@ -1,0 +1,8 @@
+A reviewer has declined to review contributions ##=id##
+
+Hello, 
+
+##@full_name## has declined to review a contribution.
+
+Title: ##=title##
+Contribution id: <A HREF='https://indico.jacow.org/event/95/contributions/##=id##/'>##=id##  https://indico.jacow.org/event/95/contributions/##=id##/ </A> (# ##=friendly_id##)
