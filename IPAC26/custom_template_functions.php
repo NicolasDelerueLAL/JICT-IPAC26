@@ -229,7 +229,7 @@ function create_title_author_block($req,$indico_link=false){
                     $primary_found=true;
                     if (!($author["email"])){
                         $function_content .="<b>WARNING:</b> The primary author (".get_initial($author["first_name"],"&nbsp;").$author["last_name"].") does not have an email address. This should not be the case.<BR/>\n";
-                        $function_content .="To add the email address of the primary author, please update modify the $indico_link: only the correspondaning author and only the corresponding author should appear \"author\". All other contributors should be listed as \"co-author\". <BR/>\n";
+                        $function_content .="To add the email address of the primary author, please update modify the $indico_link: only the corresponding author and only the corresponding author should appear \"author\". All other contributors should be listed as \"co-author\". <BR/>\n";
                         $this_aff_txt =get_initial($author["first_name"],"&nbsp;").$author["last_name"].", ".$this_aff_txt;
                         $this_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"].", ";
                         $this_word_txt .=get_initial($author["first_name"]," ").$author["last_name"];
