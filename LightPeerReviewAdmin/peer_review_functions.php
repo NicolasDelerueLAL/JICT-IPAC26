@@ -23,52 +23,6 @@ function format_time($time){
     }
 }
 
-//LPR management 
-function check_lpr_rights(){
-    $allowed_roles=array("LPR" , "SPB", "ADM");    
-    for ($mcloop=0;$mcloop<9;$mcloop++){
-        $allowed_roles[]="MC".$mcloop;
-    }
-    print("<!--- ");
-    print("allowed_roles: \n");
-    print_r($allowed_roles);
-    print("user roles: \n");
-    print_r($_SESSION['indico_oauth']['user']['roles']);
-    if (empty(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ))){
-        $allowed=false;
-    } else {
-        $allowed=true;
-    }
-    print("\n--->\n");
-    if (!$allowed) {
-        print("You don't have the right to access this page.<BR/>\n");
-        print("You are identified as ".$_SESSION['indico_oauth']['user']['first_name']." ".$_SESSION['indico_oauth']['user']['last_name']."<BR/>\n");
-        print("Your roles: ".implode(", ",$_SESSION['indico_oauth']['user']['roles'])."<BR/>\n");
-        print("Expected roles: ".implode(", ",$allowed_roles)."<BR/>\n");
-        die("End");
-    } else {
-        print("<!--- ");
-        print("Not empty...\n");
-        print_r(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ));
-        print("\n--->\n");
-    }
-} // check_lpr_rights
-
-
-function get_person($user){
-    global $cws_config;
-    $all_persons=file_read_json( $cws_config['global']['data_path']."/all_participants.json",true);
-    if (!$all_persons){
-        die("Unable to read all_persons file.");
-    }
-    foreach($all_persons as $person){
-        if ($person["email"]==$user["email"]){
-            return $person;
-            break;
-        }
-    }
-    return false;
-} //get_person
 
 function load_papers($disable_cache){
     global $Indico;
@@ -168,7 +122,7 @@ function load_papers($disable_cache){
             $paper["reviewers"].="<ol>";
             foreach($reviewers as $reviewer){
                 $rev_txt="";
-                $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"];
+                $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." ".$reviewer["email"].")";
                 if ($reviewer["date"]){
                     $rev_txt.=" on ".substr($reviewer["date"],0,10)." (";
                     $days_ago=round((time()-strtotime($reviewer["date"]))/(60*60*24));
@@ -483,7 +437,7 @@ function get_reviewers_for_contribution($contribution_id){
                 print("Warning: reviewer $id has accepted but is not among the reviewers lists! <BR/>\n");
             }
         } else if ($action=="invited"){
-            $retval[]=array("id" => "".$id,"name"=>get_full_name_from_userid($id),"action"=>"invited", "date" => $reviewers_from_history["allocation_date"][$id]);
+            $retval[]=array("id" => "".$id,"name"=>get_full_name_from_userid($id),"email"=>get_email_from_userid($id),"action"=>"invited", "date" => $reviewers_from_history["allocation_date"][$id]);
         }
     }    
     foreach($retval as $rev){
