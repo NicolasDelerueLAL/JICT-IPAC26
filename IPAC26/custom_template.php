@@ -18,7 +18,7 @@ if (str_contains($_SERVER["QUERY_STRING"],"debug")){
 require( '../config.php' );
 require_lib( 'jict', '1.0' );
 require_lib( 'indico', '1.0' );
-require( 'ipac26_tools.php' );
+require_once( 'ipac26_tools.php' );
 
 require_once('custom_template_functions.php');
 

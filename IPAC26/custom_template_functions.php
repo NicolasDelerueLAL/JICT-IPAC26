@@ -1,4 +1,5 @@
 <?php
+require_once( 'ipac26_tools.php' );
 
 function php_encode($text){
     return str_replace("\t","\\t",str_replace("\e","\\e", $text));
