@@ -6,9 +6,14 @@ function php_encode($text){
 
 function get_initial($name,$spacer){
     if ($name){
-        $matchtxt='#([[:alpha:]]+)([-.\']?)#';
+        //$matchtxt='#([[:alpha:]]+)([-.\']?)#';
+        $matchtxt='#(\pL+)([-.\']?)#u';
         $returnValue = preg_match_all($matchtxt, $name, $matches);
-        //var_dump($matches);
+        /*
+        print("<--- \n");
+        var_dump($matches);
+        print("\n --->\n");
+        */
         $initials="";
         for ($icount=0;$icount<count($matches[0]);$icount++){
             if (strlen($matches[2][$icount])==0){
