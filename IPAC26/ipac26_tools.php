@@ -245,7 +245,8 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
     print($eventPerson."\n");
     print($sender_email."\n");
     print($copy_for_sender."\n");
-    print_r($bcc_address_array."\n");
+    print_r($bcc_address_array);
+    print("\n");
     print($use_session_token."\n");
     print($use_indico_token."\n");
     print ("--->\n");
@@ -991,9 +992,12 @@ function get_participants($force_update=false){
 
     if (!($participants)){
         $fname=$cws_config['global']['data_path']."/all_participants.json";
-        print("<!--- Participants file age $fname ".(time() - filemtime($fname))." --->");
-        if (($force_update)||((time() - filemtime($fname))>(60*60*24))){
-            update_participants();
+        if ($contributions_by_abs_id){
+            //Contributions must be loaded to update participants!
+            print("<!--- Participants file age $fname ".(time() - filemtime($fname))." --->");
+            if (($force_update)||((time() - filemtime($fname))>(60*60*24))){
+                update_participants();
+            }
         }
         $participants=file_read_json( $fname,true);
     }
