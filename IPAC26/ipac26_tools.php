@@ -240,7 +240,15 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
 
 
 function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
-    print("<!--- send_email_to_eventperson --->\n");
+    print("<!--- send_email_to_eventperson \n");
+    print($subject."\n");
+    print($eventPerson."\n");
+    print($sender_email."\n");
+    print($copy_for_sender."\n");
+    print_r($bcc_address_array."\n");
+    print($use_session_token."\n");
+    print($use_indico_token."\n");
+    print ("--->\n");
     global $Indico;
 
     $post_data=array(
@@ -279,7 +287,7 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
 function send_email_file_to_eventperson($file,$eventPerson,$sender_email,$copy_for_sender,$contribution=null,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
     global $user;
     global $cws_config;
-    //print("<!--- send_email_file_to_eventperson --->\n");
+    print("<!--- send_email_file_to_eventperson $file --->\n");
     if ($contribution){
         $filename=$cws_config['global']['messages_path']."/".$file;
         if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
@@ -796,7 +804,7 @@ function update_participants(){
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id;
 
     if (!($contributions_by_abs_id)){
-        print("Contributions must be loaded to update participants!");
+        die("Contributions must be loaded to update participants!");
     }
 
     print("<!--- Updating participants list --->");
@@ -992,6 +1000,23 @@ function get_participants($force_update=false){
     return $participants;
 } //function get_participants()
 
+
+function get_person($user){
+    global $cws_config;
+    $all_persons=file_read_json( $cws_config['global']['data_path']."/all_participants.json",true);
+    if (!$all_persons){
+        die("Unable to read all_persons file.");
+    }
+    foreach($all_persons as $person){
+        if ($person["email"]==$user["email"]){
+            return $person;
+            break;
+        }
+    }
+    return false;
+} //get_person
+
+
 function get_participant($key,$value){
     $participants=get_participants();
     $idx=array_search($value, array_column($participants, $key)); 
@@ -1006,8 +1031,43 @@ function get_full_name_from_userid($userid){
     return get_participant("user_id",$userid)["full_name"]; 
 }//get_full_name_from_userid
 
+function get_email_from_userid($userid){
+    return get_participant("user_id",$userid)["email"]; 
+}//get_full_name_from_userid
+
 function get_full_name_from_eventid($eventid){
     return get_participant("id",$eventid)["full_name"]; 
 }//get_full_name_from_userid
+
+//LPR management 
+function check_lpr_rights(){
+    $allowed_roles=array("LPR" , "SPB", "ADM");    
+    for ($mcloop=0;$mcloop<9;$mcloop++){
+        $allowed_roles[]="MC".$mcloop;
+    }
+    print("<!--- ");
+    print("allowed_roles: \n");
+    print_r($allowed_roles);
+    print("user roles: \n");
+    print_r($_SESSION['indico_oauth']['user']['roles']);
+    if (empty(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ))){
+        $allowed=false;
+    } else {
+        $allowed=true;
+    }
+    print("\n--->\n");
+    if (!$allowed) {
+        print("You don't have the right to access this page.<BR/>\n");
+        print("You are identified as ".$_SESSION['indico_oauth']['user']['first_name']." ".$_SESSION['indico_oauth']['user']['last_name']."<BR/>\n");
+        print("Your roles: ".implode(", ",$_SESSION['indico_oauth']['user']['roles'])."<BR/>\n");
+        print("Expected roles: ".implode(", ",$allowed_roles)."<BR/>\n");
+        die("End");
+    } else {
+        print("<!--- ");
+        print("Not empty...\n");
+        print_r(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ));
+        print("\n--->\n");
+    }
+} // check_lpr_rights
 
 ?>

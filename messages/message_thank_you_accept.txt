@@ -1,4 +1,4 @@
-Thank you for agreeing to review a paper for the IPAC'23 Light Peer Reviewing
+Thank you for agreeing to review a paper for the IPAC'26 Light Peer Reviewing
 Dear {first_name} {last_name},
 
 Thank you for agreeing to review the paper: ##=title##

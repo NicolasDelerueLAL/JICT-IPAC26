@@ -1,0 +1,12 @@
+[IPAC'26] Update of the title of your contribution {contribution_id}
+Dear {first_name} {last_name},
+
+During the quality assesments of your contribution {contribution_id}, it was noticed that the title did not match JACoW's requirements (titles must be submitted in sentence case).
+The case of your title in indico has been changed to sentence case and now reads: "{contribution_title}".
+
+If the change is incorrect (for example if some proper nouns or acronyms have not been correctly identified), please let us know, otherwise no action is required from your side.
+
+Best wishes,
+
+Nicolas Delerue
+(IPAC'26 Editor in chief)

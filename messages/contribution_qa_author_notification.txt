@@ -1,0 +1,18 @@
+[IPAC'26] Please fix your contribution: {contribution_title}
+Dear {first_name} {last_name},
+
+Thank you for submitting a contribution to IPAC'26.
+However, during the quality review of your contribution {contribution_id} ({contribution_title}) we noticed the following problem:
+
+##explanations##
+
+Could you please review your contribution at <A HREF=https://indico.jacow.org/event/95/contributions/##contribution_id##/>https://indico.jacow.org/event/95/contributions/##contribution_id##/</A>.
+
+Modifications are allowed to fix these issues.
+
+Thank you in advance,
+
+Nicolas Delerue
+(IPAC'26 Editor in chief)
+
+PS: As the quality assessment (QA) of abstracts progrosses you may receive several notification regarding different QA issues.

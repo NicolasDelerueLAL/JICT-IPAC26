@@ -1,0 +1,46 @@
+[IPAC'26] Session assigned to your contribution: {contribution_title}
+Dear {first_name} {last_name},
+
+Thank you for submitting a contribution to IPAC'26.
+Your contribution entitled "{contribution_title}" has been accepted as ##=type:name##.
+
+Contributions are affected to poster sessions based on the MC (Main classification) of their track and the region of affiliation of the speaker.
+
+For your paper {contribution_id}: "{contribution_title}" the submitter has selected the following MC: ##=MC## and the following track: ##=track_name##.
+
+You can find the details of all MC and tracks at  <A HREF='https://www.ipac26.org/classifications/'>https://www.ipac26.org/classifications/</A>.
+
+If this is incorrect, please let us know so that we can assign your poster to the correct track.
+
+The speaker of your paper is ##=speaker_name## affiliated to ##=speaker_affiliation## (##=speaker_country##). If this is incorrect, please review the details submitted in indico: <A HREF='https://indico.jacow.org/event/95/contributions/##=id##/'>https://indico.jacow.org/event/95/contributions/##=id##/</A>.
+
+Hence your poster is scheduled on {contribution_schedule}.
+
+You can see all your contributions to IPAC'26 at <A HREF='https://indico.jacow.org/event/95/contributions/mine'>https://indico.jacow.org/event/95/contributions/mine</A>.
+
+To give all contributors time to see posters from their colleagues working on similar topics but in other regions the posters from a given MC will be presented on different days depending on the region of affiliation of their speaker.
+
+The posters sessions will be organised as follow:
+
+Monday:
+MC1 (Europe, Middle-East and Africa), MC6 (Americas and Asia), MC7 (Europe, Middle-East and Africa) and MC8 (Americas and Asia).
+
+Tuesday:
+MC2 (Americas and Asia), MC3 (Europe, Middle-East and Africa), MC7 (Americas and Asia), MC8 (Europe, Middle-East and Africa)
+
+Wednesday:
+MC1 (Americas and Asia), MC4 (Americas and Asia), MC5 (Europe, Middle-East and Africa), MC6 (Europe, Middle-East and Africa)
+
+Thursday
+ MC2 (Europe, Middle-East and Africa), MC3 (Americas and Asia), MC4 (Europe, Middle-East and Africa), MC5 (Americas and Asia)
+
+If a speaker has several poster on the same day they will be placed one after the other.
+
+If you find that your poster is misclassified or your are unable to present on the assigned day, please contact us as soon as possible. 
+
+We expect to assign poster codes in about a week and circulate the templates to be used for the conference papers in early March.
+
+Best wishes,
+
+Nicolas Delerue
+(IPAC'26 Editor in chief)
