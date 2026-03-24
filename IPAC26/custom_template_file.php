@@ -135,7 +135,7 @@ if (($type=="latex")||($type=="latex-bib")){
             }
             if ($thematch[0]=="footnote"){
                 
-                $newContents .= str_replace('cx="2962275" cy="342900"','cx="2962275" cy="'. ($author_block["word"]["footnote_lines"]*220000). '"', 
+                $newContents .= str_replace('cx="2962275" cy="342900"','cx="2962275" cy="'. ($author_block["word"]["footnote_lines"]*260000). '"', 
                 str_replace('<wp:positionV relativeFrom="page"><wp:posOffset>8994775</wp:posOffset>','<wp:positionV relativeFrom="page"><wp:posOffset>'.(8994775-($author_block["word"]["footnote_lines"]*100000)).'</wp:posOffset>',
                 substr($oldContents,$copiedTo,$thematch[1]-1-$copiedTo)));
                 $newContextPositions[]=mb_strlen($newContents);
