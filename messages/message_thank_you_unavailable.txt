@@ -1,5 +1,5 @@
 Thank you for your reply regarding the IPAC'26 Light Peer Reviewing
-Dear {first_name} (last_name},
+Dear {first_name} {last_name},
 
 Thank you for your message.
 We have noted that you are unavailble to review the contribution: ##=title##
