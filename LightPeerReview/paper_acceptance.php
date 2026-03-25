@@ -97,7 +97,7 @@ if (!(in_array($this_person["user_id"],$paper_reviewer["invited"]))){
     } if ((in_array($this_person["user_id"],$paper_reviewer["declined"]))){
         die("The invitation we sent you has been declined");
     } else {
-        die("Sorry you have not been invited to review this paper");
+        die("Sorry you ".$this_person["full_name"]." - ".$this_person["email"]." (".$this_person["user_id"].") have not been invited to review this paper");
     }
 }
 
