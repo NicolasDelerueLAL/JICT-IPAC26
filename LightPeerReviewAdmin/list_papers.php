@@ -117,7 +117,9 @@ $content .="</THEAD>\n";
 $content .="<TBODY>\n"; 
 
 $disable_cache=true;
+show_exec_time("bf load_paper");
 load_papers($disable_cache);
+show_exec_time("af load_paper");
 
 for($ploop=0;$ploop<count($all_papers);$ploop++){
     $paper=$all_papers[$ploop];
@@ -135,6 +137,8 @@ for($ploop=0;$ploop<count($all_papers);$ploop++){
     } //for each field
     $content .="</TR>\n"; 
 } // foreach
+show_exec_time("af paper loop");
+
 $content .="</tbody>";
 $content .="</TABLE>";
 $content .="<BR/>";
@@ -169,6 +173,11 @@ $T->set( 'undone_n', $undone_n );
 $T->set( 'all_n', $todo_n +$done_n );
 */
 echo $T->get();
+
+show_exec_time("end");
+if ($execution_record){
+    print($execution_record);
+}
 
 //print("done");
 

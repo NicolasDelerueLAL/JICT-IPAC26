@@ -82,7 +82,7 @@ if (!($queryArray["contribution_id"])){
     die("No contribution ID given... Stop.");
 }
 if (!($queryArray["person_id"])){
-    die("No contribution ID given... Stop.");
+    die("No person ID given... Stop.");
 }
 
 $all_persons=file_read_json($cws_config['global']['data_path']."/all_participants.json", true );

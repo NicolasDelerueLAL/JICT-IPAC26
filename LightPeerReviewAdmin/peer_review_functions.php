@@ -32,10 +32,11 @@ function load_papers($disable_cache){
     global $cfg;
     global $days_for_review,$days_to_accept_invitation;
 
+    show_exec_time("load_paper start");
 
-    load_abstracts();
+    load_abstracts($disable_cache);
 
-    load_contributions();
+    load_contributions($disable_cache);
 
     $_rqst_cfg=[];
     $_rqst_cfg['disable_cache'] =$disable_cache;
@@ -63,6 +64,7 @@ function load_papers($disable_cache){
         var_dump($req_papers);
         die("Unable to decode req_papers ");
     }
+    show_exec_time("load_paper bf loop");
 
     for($ploop=0;$ploop<count($all_papers);$ploop++){
         $paper=$all_papers[$ploop];
@@ -174,6 +176,8 @@ function load_papers($disable_cache){
     
         $all_papers[$ploop]=$paper;
     } // for each paper
+    show_exec_time("load_paper end");
+
 } //load_papers 
 
 

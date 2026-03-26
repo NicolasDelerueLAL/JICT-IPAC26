@@ -1,5 +1,18 @@
 <?php
 
+
+if (!($time_start)){
+    $time_start=microtime(true);
+    $execution_record="";
+}
+
+function show_exec_time($msg=""){
+    global $time_start,$execution_record;
+    print("<!--- Execution time: ".round((microtime(true)-$time_start),3)." @ $msg --->\n");
+    $execution_record.="<!--- ".round((microtime(true)-$time_start),3)." @ $msg --->\n";
+    
+} //show_exec_time
+
 /*-----------------------------------------
 */
 class AI_REQUEST {
@@ -67,11 +80,12 @@ function remove_editor_from_contact_info(){
  ));
 }  //remove_editor_from_contact_info()
 
-function load_abstracts(){
+function load_abstracts($disable_cache=false){
     global $Indico;
     global $abstracts,$all_abstracts;
+    show_exec_time("load_abstracts_start disable_cache $disable_cache");
     $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =false;
+    $_rqst_cfg['disable_cache'] =$disable_cache;
     //$_rqst_cfg['disable_cache'] =true;
     $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
     $abstracts=[];
@@ -91,12 +105,14 @@ function load_abstracts(){
     foreach($all_abstracts as $abstract){
         $abstracts[$abstract["id"]]=$abstract;
     }
+    show_exec_time("load_abstracts_end");
 }//load_abstracts
 
 function load_contributions($disable_contributions_cache=false,$fix_affiliations=false){
     global $Indico,$cws_config;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
     global $abstracts;
+    show_exec_time("load_contributions_start");
     $_rqst_cfg=[];
     $_rqst_cfg['disable_cache'] =$disable_contributions_cache;
     if ($disable_contributions_cache){
@@ -236,11 +252,13 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
         $contributions[$contribution["id"]]=$contribution;
         $contributions_by_fr_id[$contribution["friendly_id"]]=$contribution["id"];
     }
+    show_exec_time("load_contributions_end");
 }// load_contributions
 
 
 function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
-    print("<!--- send_email_to_eventperson \n");
+    show_exec_time("send_email_to_eventperson start");
+    //print("<!--- send_email_to_eventperson \n");
     print($subject."\n");
     print($eventPerson."\n");
     print($sender_email."\n");
@@ -281,6 +299,7 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
         print(" --->\n");
         return false;
     }
+    show_exec_time("send_email_to_eventperson end");
 }//send_email_to_eventperson
 
 
@@ -288,7 +307,8 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
 function send_email_file_to_eventperson($file,$eventPerson,$sender_email,$copy_for_sender,$contribution=null,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
     global $user;
     global $cws_config;
-    print("<!--- send_email_file_to_eventperson $file --->\n");
+    //print("<!--- send_email_file_to_eventperson $file --->\n");
+    show_exec_time("send_email_file_to_eventperson start");
     if ($contribution){
         $filename=$cws_config['global']['messages_path']."/".$file;
         if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
@@ -474,12 +494,14 @@ function send_email_to_contributor($subject,$body,$recipient_role,$contribution_
 function get_contribution($contribution_id,$use_session_token=true){
     global $Indico;
     //global $cws_config;
+    show_exec_time("get_contribution start");
 
     $req =$Indico->request( "/event/{id}/contributions/".$contribution_id.".json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token ) );
     if (!$req["title"]){
         print("Getting contribution ".$contribution_id." failed.");
         return false;
     }
+    show_exec_time("get_contribution end");
     return $req;
     //var_dump($req);
     //print("Title: ".$req["title"]."<BR/>\n");
@@ -487,7 +509,8 @@ function get_contribution($contribution_id,$use_session_token=true){
 
 function get_paper($contribution_id,$use_session_token=true){
     global $Indico;
-    print("<!--- get_paper $contribution_id --->\n");
+    //print("<!--- get_paper $contribution_id --->\n");
+    show_exec_time("get_paper start");
     //global $cws_config;
     $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id, 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token ) );
     //var_dump($req);
@@ -496,6 +519,7 @@ function get_paper($contribution_id,$use_session_token=true){
         print("Getting paper for contribution ".$contribution_id." failed. (in get contribution)");
         return false;
     }
+    show_exec_time("get_paper end");
     return $req;
 } //get_contribution
 
@@ -752,6 +776,7 @@ function assign_contribution_code($contribution_id,$code){
 
 function comment_paper($contribution_id,$comment,$use_session_token=true,$use_indico_token=false){
     global $Indico;
+    show_exec_time("comment_paper start");
     $post_data=array(
         "comment" => $comment,
         "visibility" => "judges" , 
@@ -761,8 +786,10 @@ function comment_paper($contribution_id,$comment,$use_session_token=true,$use_in
         $use_session_token=false;
     }
     $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id."/comment", 'POST', $post_data , array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token ) );
-    print("\ncomment:\n");
-    var_dump($req);
+    //print("\n<!--- comment:\n");
+    //var_dump($req);
+    //print(" --->");
+    show_exec_time("comment_paper end");
 }//comment_paper
 
 function get_search_token(){
@@ -784,6 +811,7 @@ function get_search_token(){
 
 function get_userid_from_email($email,$token=false){
     global $Indico;
+    show_exec_time("get_userid_from_email start");
     if (!$token){
         $token=get_search_token();
     }
@@ -803,6 +831,7 @@ function get_userid_from_email($email,$token=false){
 function update_participants(){
     global $Indico;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id;
+    show_exec_time("update_participants start");
 
     if (!($contributions_by_abs_id)){
         die("Contributions must be loaded to update participants!");
@@ -983,12 +1012,14 @@ function update_participants(){
     global $cws_config;
     $fwret=file_write_json( $cws_config['global']['data_path']."/all_participants.json",$all_persons);
     //echo "file write $fwret \n"; 
+    show_exec_time("update_participants end");
 
 } //function update_participants()
 
 function get_participants($force_update=false){
     global $cws_config;
     global $participants;
+    show_exec_time("get_participants start");
 
     if (!($participants)){
         $fname=$cws_config['global']['data_path']."/all_participants.json";
@@ -1001,6 +1032,7 @@ function get_participants($force_update=false){
         }
         $participants=file_read_json( $fname,true);
     }
+    show_exec_time("get_participants end");
     return $participants;
 } //function get_participants()
 
@@ -1022,8 +1054,10 @@ function get_person($user){
 
 
 function get_participant($key,$value){
+    show_exec_time("get_participant start");
     $participants=get_participants();
     $idx=array_search($value, array_column($participants, $key)); 
+    show_exec_time("get_participant idx found");
     if ($idx){
         return $participants[$idx];
     } else {
