@@ -12,7 +12,7 @@ require_once('../IPAC26/ipac26_tools.php');
 
 $days_for_review=7;
 $days_to_accept_invitation=3;
-
+$days_after_reminder=1;
 
 /*** FUNCTIONS  ***/
 function format_time($time){
@@ -24,17 +24,17 @@ function format_time($time){
 }
 
 
-function load_papers($disable_cache){
+function load_papers($disable_cache,$disable_abtracts_cache=true){
     global $Indico;
     global $all_papers;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
     global $abstracts,$all_abstracts;
     global $cfg;
-    global $days_for_review,$days_to_accept_invitation;
+    global $days_for_review,$days_to_accept_invitation,$days_after_reminder;
 
     show_exec_time("load_paper start");
 
-    load_abstracts($disable_cache);
+    load_abstracts($disable_abtracts_cache);
 
     load_contributions($disable_cache);
 
@@ -119,10 +119,11 @@ function load_papers($disable_cache){
         var_dump($reviewers);
         print(" --->\n");
         $paper["overdue"]="";
-        if (($reviewers)&&(count($reviewers)>0)){
+        if (($reviewers)&&(count($reviewers)>0)){            
             $paper["n_reviewers"]=count($reviewers);
             $paper["reviewers"].="<ol>";
             foreach($reviewers as $reviewer){
+                $reminder=false;
                 $rev_txt="";
                 $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." ".$reviewer["email"].")";
                 if ($reviewer["date"]){
@@ -133,13 +134,25 @@ function load_papers($disable_cache){
                         $rev_txt.="s";
                     }
                     $rev_txt.=" ago) \n";      
+                    if (strlen($reviewer["reminder"])>0){
+                        $reminder=true;
+                        $rev_txt.="reminded on ";
+                        $rev_txt.=substr($reviewer["reminder"],0,10)." (";
+                        $days_ago=round((time()-strtotime($reviewer["reminder"]))/(60*60*24));
+                        $rev_txt.=$days_ago." day";
+                        if ($days_ago>1){
+                            $rev_txt.="s";
+                        }
+                        $rev_txt.=" ago) \n";      
+                    }
                     if (
-                        (($reviewer["action"]=="accepted")&&($days_ago>$days_for_review))
-                        ||(($reviewer["action"]=="invited")&&($days_ago>$days_to_accept_invitation))
+                        (($reviewer["action"]=="accepted")&&($days_ago>=$days_for_review))
+                        ||(($reviewer["action"]=="invited")&&($days_ago>=$days_to_accept_invitation))
+                        ||(($reminder)&&($days_ago>=$days_after_reminder))
                         )
                         {
                         $paper["overdue"].=$rev_txt;
-                        $rev_txt="<b style='color:red;'> Overdue: ".$rev_txt."</b>";
+                        $rev_txt="<b style='color:red;'> Overdue: ".$rev_txt."</b> (<A HREF='send_reminder.php?contribution_id=".$paper["contribution_id"]."'>Send a reminder</A>)";
                     } 
                 }
                 $paper["reviewers"].="<li>".$rev_txt." </li>\n";  
@@ -433,7 +446,9 @@ function get_reviewers_for_contribution($contribution_id){
                 //print("".$retval[$ival]["id"]."=?=".$id."? \n");
                 if ($retval[$ival]["id"]=="".$id){
                     $retval[$ival]["date"]=$reviewers_from_history["allocation_date"][$id];
+                    $retval[$ival]["reminder"]=$reviewers_from_history["reminder_date"][$id];
                     $retval[$ival]["action"]="accepted";
+                    $retval[$ival]["event_id"]=get_participant("user_id",$id)["id"];
                     $found=true;
                 }
             }
@@ -441,7 +456,17 @@ function get_reviewers_for_contribution($contribution_id){
                 print("Warning: reviewer $id has accepted but is not among the reviewers lists! <BR/>\n");
             }
         } else if ($action=="invited"){
-            $retval[]=array("id" => "".$id,"name"=>get_full_name_from_userid($id),"email"=>get_email_from_userid($id),"action"=>"invited", "date" => $reviewers_from_history["allocation_date"][$id]);
+            //print("get_participant:\n");
+            //var_dump(get_participant("user_id",$id)["id"]);            
+            //print("\n");
+            $retval[]=array("id" => "".$id,
+                            "event_id"=>get_participant("user_id",$id)["id"],
+                            "name"=>get_full_name_from_userid($id),
+                            "email"=>get_email_from_userid($id),
+                            "action"=>"invited", 
+                            "date" => $reviewers_from_history["allocation_date"][$id],
+                            "reminder" => $reviewers_from_history["reminder_date"][$id]
+                            );
         }
     }    
     foreach($retval as $rev){
@@ -507,8 +532,16 @@ function get_paper_reviewers_status($contribution_id){
                     //print("Action: $action \n");
                     $reviewers["allocation"][$reviewer_id]=$action;
                     $reviewers["allocation_date"][$reviewer_id]=$timeitem["created_dt"];
+                    $reviewers["reminder_date"][$reviewer_id]="";
                     $reviewers[$action][]=$reviewer_id;
                     $reviewers[$action]=array_unique($reviewers[$action]);
+                } else {
+                    $matchtxt='#Reminder sent to ([0-9]+)#';
+                    $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
+                    if ($returnValue){
+                        $reviewer_id=$matches[1][0];
+                        $reviewers["reminder_date"][$reviewer_id]=$timeitem["created_dt"];
+                    }
                 }
             }       
         } //for each timeitem

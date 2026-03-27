@@ -259,15 +259,19 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
 function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
     show_exec_time("send_email_to_eventperson start");
     //print("<!--- send_email_to_eventperson \n");
-    print($subject."\n");
-    print($eventPerson."\n");
-    print($sender_email."\n");
-    print($copy_for_sender."\n");
+    /*
+    print("\n<!--- ");
+    print("subject: ".$subject."\n");
+    print("eventPerson ".$eventPerson."\n");
+    print("sender_email: ". $sender_email."\n");
+    print("copy_for_sender: ".$copy_for_sender."\n");
+    print("bcc: \n");
     print_r($bcc_address_array);
     print("\n");
-    print($use_session_token."\n");
-    print($use_indico_token."\n");
+    print("use_session_token: ". $use_session_token."\n");
+    print("use_indico_token: ". $use_indico_token."\n");
     print ("--->\n");
+    */
     global $Indico;
 
     $post_data=array(
@@ -781,14 +785,14 @@ function comment_paper($contribution_id,$comment,$use_session_token=true,$use_in
         "comment" => $comment,
         "visibility" => "judges" , 
     );
-    //print("\ncommenting: $contribution_id\n");
+    print("\ncommenting: $contribution_id\n");
     if ($use_indico_token){
         $use_session_token=false;
     }
     $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id."/comment", 'POST', $post_data , array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token ) );
-    //print("\n<!--- comment:\n");
-    //var_dump($req);
-    //print(" --->");
+    print("\n<!--- comment:\n");
+    var_dump($req);
+    print(" --->");
     show_exec_time("comment_paper end");
 }//comment_paper
 

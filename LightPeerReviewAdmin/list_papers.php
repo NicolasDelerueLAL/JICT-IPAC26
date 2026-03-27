@@ -116,7 +116,7 @@ $content .="</TR>\n";
 $content .="</THEAD>\n"; 
 $content .="<TBODY>\n"; 
 
-$disable_cache=true;
+$disable_cache=false;
 show_exec_time("bf load_paper");
 load_papers($disable_cache);
 show_exec_time("af load_paper");

@@ -1,0 +1,20 @@
+Review overdue for the IPAC'26 Light Peer Reviewing
+Dear {first_name} {last_name},
+
+Please note that the review for the paper below is overdue. Could you submit it in the next few days?
+
+Thank you for agreeing to review the paper: ##=title##
+id: ##=id##
+Contribution id: <A HREF='https://indico.jacow.org/event/95/contributions/##=id##/'>##=id##  https://indico.jacow.org/event/95/contributions/##=id##/ </A> (# ##=friendly_id##)
+
+You should be able to see this paper on by login to the IPAC'26 jacow website and going to "Paper Peer Reviewing / <A HREF='https://indico.jacow.org/event/95/papers/reviewing/'>Reviewing area</A>". Under "papers to review", please click on the paper title, and you will be redirected to another screen. Scroll down to the end of the page, and you will see a "Review button". Click it to access the review form.  Do not use the comment feature of that page. Also, please refrain from sending files as these may reveal your identity to the submitter.
+You can find a more detailed instruction with guidelines at <A HREF='https://ipac-docs.jacow.org/Paper/LPRreviewer/'>https://ipac-docs.jacow.org/Paper/LPRreviewer/</A> .
+
+Please note that this "light" refereeing is designed to be adequate for a conference proceedings volume: the focus is on ensuring correctness while accepting work on incremental progress, improved technology, new designs etc. in accelerator science. Please adapt your criteria to the acceptance questions in the web form and the guidelines posted at .
+
+To allow the full reviewing to take place before the start of the conference, we would appreciate if you could submit your review as soon as possible.
+
+Thank you for your help.
+
+Yours sincerely,
+The IPAC'26 Light Peer Review Scientific Publication Board
