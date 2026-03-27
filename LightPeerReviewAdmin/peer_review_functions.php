@@ -197,9 +197,6 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
                 }
                 //print("\nLast comment\n");
                 //var_dump($latest_comment);
-            } else {
-                $latest_comment=false;
-                $paper["latest_comment"]="No comment";         
             }
         } else {
             $latest_rev=false;
@@ -305,7 +302,7 @@ function show_paper_info($contribution_id){
     if (count($paper["revisions"][count($paper["revisions"])-1]["reviews"])){
         $the_rev=$paper["revisions"][count($paper["revisions"])-1];
         $content .="<BR/><BR/>\n";
-        $content .="<b style='color:green;'>".count($the_rev["reviews"])." reviews received for the last revision:</b>\n";
+        $content .="<b style='color:green;'>".count($the_rev["reviews"])." reviews received for the latest revision:</b>\n";
         $content .="<table border=1>\n";
         for($irating=-3;$irating<count($the_rev["reviews"][0]["ratings"]);$irating++){
             $content .="<tr>\n";

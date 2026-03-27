@@ -12,6 +12,14 @@ if (str_contains($_SERVER["QUERY_STRING"],"debug")){
     error_reporting(E_ALL);
 } //if debug on
 
+if ($_SERVER["QUERY_STRING"]) {
+    parse_str($_SERVER["QUERY_STRING"], $queryArray);
+    //print($_SERVER["QUERY_STRING"]."\n");
+    //print_r($queryArray);
+} else {
+    $queryArray=[];
+}
+
 
 require( '../config.php' );
 require_lib( 'jict', '1.0' );
@@ -60,7 +68,7 @@ $fields_to_display=[
                     "edit_link" => "Edit paper",
                     "round" => "Round", 
                     "latest_revision" => "Latest revision", 
-                    "latest_comment" => "Latest comment", 
+                    "latest_comment" => "Timeline", 
                     "overdue" => "Overdue" , 
                 ];
 $num_fields=[  "id", "friendly_id" ];
@@ -72,6 +80,12 @@ $js_variables ="
 
 $content .="<A HREF='list_participants.php'>Go to the list of participants</A><BR/><BR/>\n";
 
+$disable_cache=false;
+show_exec_time("bf load_paper");
+load_papers($disable_cache);
+show_exec_time("af load_paper");
+
+$content .="There are ".count($all_papers)." papers <BR/>\n";
 
 $content .="
 <div class=\"table-wrap\"><table id='abstracts_table' class=\"sortable\" width=\"95%\">
@@ -116,32 +130,42 @@ $content .="</TR>\n";
 $content .="</THEAD>\n"; 
 $content .="<TBODY>\n"; 
 
-$disable_cache=false;
-show_exec_time("bf load_paper");
-load_papers($disable_cache);
-show_exec_time("af load_paper");
 
+
+$papers_shown=0;
 for($ploop=0;$ploop<count($all_papers);$ploop++){
     $paper=$all_papers[$ploop];
-    $content .="<TR id=\"TR-".$paper["contribution_id"]."\">\n"; 
-    foreach ($fields_to_display as $field => $display){       
-        //echo "$field: ".$abstract[$field]." <BR/>\n"; 
-        $content .="<TD ";
-        $content .=">";
-        if (array_key_exists($field,$paper)){
-            $content .="". $paper[$field];
-        } else {
-            $content .=" ??? ";
+
+    $show_paper=true;
+    if (array_key_exists("MC",$queryArray)){
+        if (!(substr($paper["MC"],2,1)==$queryArray["MC"])){
+            $show_paper=false;
         }
-        $content .= "</TD>\n"; 
-    } //for each field
-    $content .="</TR>\n"; 
+    }
+    if ($show_paper){
+        $papers_shown+=1;
+        $content .="<TR id=\"TR-".$paper["contribution_id"]."\">\n"; 
+        foreach ($fields_to_display as $field => $display){       
+            //echo "$field: ".$abstract[$field]." <BR/>\n"; 
+            $content .="<TD ";
+            $content .=">";
+            if (array_key_exists($field,$paper)){
+                $content .="". $paper[$field];
+            } else {
+                $content .=" ??? ";
+            }
+            $content .= "</TD>\n"; 
+        } //for each field
+        $content .="</TR>\n"; 
+    }
 } // foreach
 show_exec_time("af paper loop");
 
 $content .="</tbody>";
 $content .="</TABLE>";
 $content .="<BR/>";
+$content .="".$papers_shown." papers shown <BR/>\n";
+
 $content .="<BR/>";
 $content .="<BR/>";
 
