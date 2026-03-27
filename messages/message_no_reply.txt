@@ -1,0 +1,11 @@
+Invitation to review a paper for IPAC'26 LPR withdrawn
+Dear {first_name} {last_name},
+
+We previously contacted you to review the paper: ##=title##
+id: ##=id##
+
+Unfortunately you did not reply, so the invitation has been withdrawn.
+
+Yours sincerely,
+##@full_name##, 
+On behalf of the IPAC'26 Light Peer Review Scientific Publication Board

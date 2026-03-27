@@ -151,9 +151,10 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
                         ||(($reminder)&&($days_ago>=$days_after_reminder))
                         )
                         {
+                        $rev_txt.="<b style='color:red;'> Overdue: ".$rev_txt."</b> (<A HREF='send_reminder.php?contribution_id=".$paper["contribution_id"]."'>Send a reminder</A>) ";
                         $paper["overdue"].=$rev_txt;
-                        $rev_txt="<b style='color:red;'> Overdue: ".$rev_txt."</b> (<A HREF='send_reminder.php?contribution_id=".$paper["contribution_id"]."'>Send a reminder</A>)";
                     } 
+                    $rev_txt.="(<A HREF='../LightPeerReview/paper_acceptance?contribution_id=".$paper["contribution_id"]."&force_user_by_email=".$reviewer["email"]."'>Manual action</A>)";
                 }
                 $paper["reviewers"].="<li>".$rev_txt." </li>\n";  
             }
@@ -172,6 +173,30 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
                 //print("\nLast comment\n");
                 //var_dump($latest_comment);
                 $paper["latest_comment"]=format_time($latest_comment["created_dt"])." - ".$latest_comment["text"];
+            } else {
+                $latest_comment=false;
+                $paper["latest_comment"]="No comment";         
+            }
+            if (count($latest_rev["reviews"])>0){
+                if (!($latest_comment)){
+                    $latest_comment="";
+                    $paper["latest_comment"]="";
+                }
+                $latest_comment.="<BR/>\n";
+                if (count($latest_rev["reviews"])==1){                    
+                    $latest_comment.="1 review<BR/>\n";
+                    $paper["latest_comment"].="1 review<BR/>\n";
+                } else {
+                    $latest_comment.=count($latest_rev["reviews"])." reviews<BR/>\n";
+                    $paper["latest_comment"].=count($latest_rev["reviews"])." reviews<BR/>\n";
+                    $paper["overdue"].="Check reviews";
+                }
+                foreach($latest_rev["reviews"] as $review){
+                    $latest_comment.=$review["proposed_action"]["name"]." <BR/>\n";
+                    $paper["latest_comment"].=$review["proposed_action"]["name"]." <BR/>\n";
+                }
+                //print("\nLast comment\n");
+                //var_dump($latest_comment);
             } else {
                 $latest_comment=false;
                 $paper["latest_comment"]="No comment";         
@@ -236,9 +261,18 @@ function show_paper_info($contribution_id){
             }
             $paper["revisions_history"].="</ol>\n";
         }
+        if (count($the_rev["reviews"])>0){
+            $paper["revisions_history"].="Reviews:<BR/><ol>\n";
+            for ($icom=0;$icom<count($the_rev["reviews"]);$icom++){
+                $the_review=$the_rev["reviews"][$icom];
+                $paper["revisions_history"].="<li>".format_time($the_review["created_dt"])." - ".$the_review["proposed_action"]["name"]."</li>\n";
+            }
+            $paper["revisions_history"].="</ol>\n";
+        }
         $paper["revisions_history"].="</li>";
     } //for irev
-    $paper["revisions_history"].="</ol>";
+
+
 
     $content .="<BR/><BR/>\n";
     //Format: ["indico field name" => "display name" ]
@@ -248,7 +282,6 @@ function show_paper_info($contribution_id){
                         "ids" => "IDs",
                         "MC" => "MC", 
                         "track" => "track", 
-                        "round" => "Round", 
                         "status" => "Status" ,
                         "title" => "Title",  
                         "description" => "Abstract",  
@@ -268,6 +301,57 @@ function show_paper_info($contribution_id){
     foreach($fields_to_display as $field_name=>$field_title){
         $content .=$field_title." : ".$paper[$field_name]."<BR/>\n";
     } //for each field
+
+    if (count($paper["revisions"][count($paper["revisions"])-1]["reviews"])){
+        $the_rev=$paper["revisions"][count($paper["revisions"])-1];
+        $content .="<BR/><BR/>\n";
+        $content .="<b style='color:green;'>".count($the_rev["reviews"])." reviews received for the last revision:</b>\n";
+        $content .="<table border=1>\n";
+        for($irating=-3;$irating<count($the_rev["reviews"][0]["ratings"]);$irating++){
+            $content .="<tr>\n";
+            for($ireview=-1;$ireview<count($the_rev["reviews"]);$ireview++){
+                $content .="<td>\n";
+                if ($irating==-3){
+                    if ($ireview>=0){
+                        $content .=$the_rev["reviews"][$ireview]["user"]["full_name"];
+                        $content .=" (".$the_rev["reviews"][$ireview]["user"]["id"].")";
+                    } else {
+                        $content .="Name";
+                    }
+                } else if ($irating==-2){
+                    if ($ireview>=0){
+                        $content .=$the_rev["reviews"][$ireview]["proposed_action"]["name"];
+                    } else {
+                        $content .="Decision";
+                    }
+                } else if ($irating==-1){
+                    if ($ireview>=0){
+                        $content .=str_replace("T"," ",substr($the_rev["reviews"][$ireview]["created_dt"],0,19));
+                    } else {
+                        $content .="Date";
+                    }
+                } else{
+                     if ($ireview==-1){
+                        $content .=$the_rev["reviews"][0]["ratings"][$irating]["question"]["title"];
+                    } else {
+                        if (is_bool($the_rev["reviews"][$ireview]["ratings"][$irating]["value"])){
+                            if ($the_rev["reviews"][$ireview]["ratings"][$irating]["value"]){
+                                $content .="Yes";
+                            } else {
+                                $content .="No";
+                            }
+                        } else {
+                            $content .=$the_rev["reviews"][$ireview]["ratings"][$irating]["value"];
+                        }
+                    }
+                }
+                $content .="</td>\n";
+            }
+            $content .="</tr>\n";
+        }            
+        $content .="</table>\n";
+    }
+
 
     return $content;
 } //function show_paper_info

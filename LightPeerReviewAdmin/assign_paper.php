@@ -104,6 +104,8 @@ foreach($all_persons as $person){
     }
 } //for each person
 $content .= "<BR/><BR/>\n";
+//$content .= "<BR/>Overridding can not assign!!!<BR/>\n";
+//$cannot_assign=false;
 if (($queryArray["confirm"]==1)&&(!$cannot_assign)){
     $content .= "<h3>Assignation confirmed</h3><BR/>\n";
     if ((!($the_reviewer["email"]))||(!(add_reviewer_to_team($the_reviewer["email"])))){

@@ -118,7 +118,7 @@ $content .="<BR/>\n";
 
 if ($_POST){
     $sender="peer-review@ipac26.org";
-    $bcc_address_array=array( "peer-review@ipac26.org" , "nicolas.delerue@cnrs.fr" , "gianluca.aldo.geloni@xfel.eu" );
+    $bcc_address_array=array( "peer-review@ipac26.org" , "editor@ipac26.org" );
     $lpr_manager="EventPerson:35761";
     $use_indico_token=true;
     $use_session_token=false;
@@ -137,6 +137,10 @@ if ($_POST){
         if (($_POST["action"]=="decline_no_review")||($_POST["action"]=="decline_not_eligible")){
             $content .="Thanks you for your answer. We are sorry that you are unavailable to review papers for IPAC'26.<BR/>\n";
             send_email_file_to_eventperson("message_thank_you_no_review.txt","EventPerson:".$this_person["id"],$sender,true,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
+        //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
+        } else if ($_POST["action"]=="decline_no_reply"){
+            $content .="Recorded that there were no reply from the reviewer<BR/>\n";
+            send_email_file_to_eventperson("message_no_reply.txt","EventPerson:".$this_person["id"],$sender,true,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
         //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
         } else {
             $content .="Thanks you for your answer. We are sorry that you are unavailable to review this contribution.<BR/>\n";
@@ -170,7 +174,11 @@ if ($_POST){
     $content .="<INPUT type='radio' name='action' value='decline_not_eligible'> I am not eligible to be a reviewer (student,...).<BR/>\n";        
     $content .="<INPUT type='radio' name='action' value='decline_temporarily_unavailable'> I am temporarily unavailable.<BR/>\n";        
     $content .="<INPUT type='radio' name='action' value='decline_no_review'> I am not able to review papers for IPAC'26.<BR/>\n";        
-
+    if ($queryArray["force_user_by_email"]){
+        $content .="<BR/>\n";
+        $content .="<BR/>\n";
+        $content .="<INPUT type='radio' name='action' value='decline_no_reply'> Reviewer did not reply.<BR/>\n";        
+    }
     $content .="<input type='submit' value='Submit'><BR/>\n";
     $content .="</form>\n";
     $content .="<BR/>\n";
