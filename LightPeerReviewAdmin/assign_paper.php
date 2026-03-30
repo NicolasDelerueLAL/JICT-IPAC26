@@ -103,10 +103,10 @@ if (!$retval["can_assign"]){
 $cannot_assign=!$retval["can_assign"]||$cannot_assign;
 
 $content .= "<h3>Information about reviewer ".get_full_name_from_eventid($queryArray["person_id"])." (". $queryArray["person_id"].")</h3><BR/>\n";
-$content .= show_reviewer_info($queryArray["person_id"]);
 
 //$content .= show_reviewer_info($queryArray["person_id"]);
 
+$the_reviewer=false;
 foreach($all_persons as $person){
     if ($person["id"]==$queryArray["person_id"]){
         $the_reviewer=$person;
@@ -114,6 +114,9 @@ foreach($all_persons as $person){
         break;
     }
 } //for each person
+if (!$the_reviewer){
+    $content .="<b style='color:red;'>Unable to find reviewer in the list of participants!</b><BR/>\n";
+}
 $content .= "<BR/><BR/>\n";
 //$content .= "<BR/>Overridding can not assign!!!<BR/>\n";
 //$cannot_assign=false;

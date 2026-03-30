@@ -134,12 +134,13 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
     foreach($all_contributions as $contribution){
         if (!$contribution["track"]["code"]){
             $contribution["MC"]="XXX";
+            $contribution["track_name"]="";
             print("<!--- Error determining track code for contribution ID: ".$contribution["id"]." --->\n");
         } else {
             $contribution["MC"]=substr($contribution["track"]["code"],0,3);
+            $contribution["track_name"]=$contribution["track"]["title"];
         }
         //$contribution["track_name"]=$contribution["track"]["code"]." - ".$contribution["track"]["title"];
-        $contribution["track_name"]=$contribution["track"]["title"];
 
         $contribution["speaker_name"]="";
         $contribution["speaker_country"]="";

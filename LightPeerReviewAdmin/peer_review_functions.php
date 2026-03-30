@@ -115,10 +115,10 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
         $paper["reviewers"]="";
         $paper["edit_link"]="<A HREF='edit_paper.php?contribution_id=".$paper["contribution_id"]."'>Edit paper</A>";
         $reviewers=get_reviewers_for_contribution($contribution["id"]);
-        print("<!---\n"); 
-        print(" reviewers \n"); 
-        var_dump($reviewers);
-        print(" --->\n");
+        //print("<!---\n"); 
+        //print(" reviewers \n"); 
+        //var_dump($reviewers);
+        //print(" --->\n");
         $paper["overdue"]="";
         if (($reviewers)&&(count($reviewers)>0)){            
             $paper["n_reviewers"]=count($reviewers);
@@ -366,7 +366,10 @@ function show_paper_info($contribution_id,$paper=false){
 
 
 function show_reviewer_info($person){
-    //var_dump($person);
+    print("<!---\n");
+    print("show_reviewer_info for person \n");
+    var_dump($person);
+    print(" --->\n");
     global $contributions;
     global $abstracts;
     $content="";
