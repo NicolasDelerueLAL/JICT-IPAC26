@@ -111,12 +111,14 @@ foreach($all_persons as $person){
     if ($person["id"]==$queryArray["person_id"]){
         $the_reviewer=$person;
         $content .= show_reviewer_info($person);
+        var_dump(show_reviewer_info($person));
         break;
     }
 } //for each person
 if (!$the_reviewer){
     $content .="<b style='color:red;'>Unable to find reviewer in the list of participants!</b><BR/>\n";
 }
+$content .= "<!--- after reviewer info --->\n";
 $content .= "<BR/><BR/>\n";
 //$content .= "<BR/>Overridding can not assign!!!<BR/>\n";
 //$cannot_assign=false;

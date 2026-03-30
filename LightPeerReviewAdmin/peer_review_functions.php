@@ -409,7 +409,7 @@ function show_reviewer_info($person){
     if (strlen($activities["content"])>0){
         $content .="<li> Reviewer activity: ".$activities["content"]." </li>\n";
     }
-
+    return $content;
 
 } //function show_reviewer_info
 
