@@ -113,7 +113,7 @@ if (($queryArray["confirm"]==1)&&(!$cannot_assign)){
     } else {
         $content .= "<BR/>Reviewer ".$the_reviewer["email"]." added to the team<BR/>\n";
         comment_paper($queryArray["contribution_id"],"Inviting reviewer ".$the_reviewer["user_id"]);
-        $bcc_address_array=array( "peer-review@ipac26.org" , "editor@ipac26.org" );
+        $bcc_address_array=array( "peer-review@ipac26.org" );
         $use_indico_token=true;
         $use_session_token=false;        
         //print("use_indico_token: $use_indico_token ,use_session_token: $use_session_token \n");
