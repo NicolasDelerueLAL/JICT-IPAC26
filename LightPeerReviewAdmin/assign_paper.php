@@ -93,7 +93,18 @@ $content .= show_paper_info($queryArray["contribution_id"]);
 $retval=check_authors_list_for_reviewer($contributions[$queryArray["contribution_id"]],$queryArray["person_id"]);
 $content .=$retval["content"];
 $cannot_assign=$retval["found"];
+
+$retval=check_reviewer_availability_for_paper($queryArray["person_id"],$queryArray["contribution_id"]);
+if (!$retval["can_assign"]){
+    $content .="<b style='color:red;'>".$retval["content"]."<br/></b>";
+} else {
+    $content .=$retval["content"];
+}
+$cannot_assign=!$retval["can_assign"]||$cannot_assign;
+
 $content .= "<h3>Information about reviewer ".get_full_name_from_eventid($queryArray["person_id"])." (". $queryArray["person_id"].")</h3><BR/>\n";
+$content .= show_reviewer_info($queryArray["person_id"]);
+
 //$content .= show_reviewer_info($queryArray["person_id"]);
 
 foreach($all_persons as $person){
@@ -162,5 +173,9 @@ $T->set( 'all_n', $todo_n +$done_n );
 echo $T->get();
 
 //print("done");
+show_exec_time("end");
+if ($execution_record){
+    print($execution_record);
+}
 
 ?>

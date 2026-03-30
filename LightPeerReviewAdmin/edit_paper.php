@@ -26,6 +26,7 @@ require_lib( 'indico', '1.0' );
 
 require('peer_review_functions.php');
 
+show_exec_time("edit_paper start");
 
 $cfg =config( 'LightPeerReviewAdmin' );
 $cfg['verbose'] =1;
@@ -77,12 +78,30 @@ $content .="<BR/><BR/>\n";
 if (!($queryArray["contribution_id"])){
     die("No contribution ID given... Stop.");
 }
+
+$reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
+if (!$reviewers_info){
+    die("Unable to read reviewers_info.json");
+}   
+
 $content .="<center><h2>Information about paper ".$queryArray["contribution_id"]."</h2></center><BR/>\n";
 
+$paper_val=-1;
+for($ploop=0;$ploop<count($all_papers);$ploop++){    
+    $paper=$all_papers[$ploop];    
+    if ($paper["contribution"]['id']==$queryArray["contribution_id"]){
+        $paper_val=$ploop;
+    }
+} //looking for the paper
+if ($paper_val==-1){
+    die("Unable to find paper with contribution ID ".$queryArray["contribution_id"]);
+}
+$paper=$all_papers[$paper_val];
 
-$content .= show_paper_info($queryArray["contribution_id"]);
+$content .= show_paper_info($queryArray["contribution_id"],$paper);
 
 $content .="<hr>\n";
+
 
 if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryArray["add_extra_reviewer"]==0))){
     $content .="Already ".$paper["n_reviewers"]." reviewers are assigned to this paper.<BR/>\n";
@@ -97,10 +116,14 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
     }
     
     for ($iperson=0;$iperson<count($all_persons);$iperson++){
-        if (($paper["abstract_id"])&&($all_persons[$iperson]["abstracts_id"])&&(in_array($paper["abstract_id"],$all_persons[$iperson]["abstracts_id"]))){
-            $content .="Removing author: ".$all_persons[$iperson]["name"]." from the pool (abstract id).<BR/>\n";
-        } else if (($paper["contribution_id"])&&($all_persons[$iperson]["contributions_id"])&&(in_array($paper["contribution_id"],$all_persons[$iperson]["contributions_id"]))){
-            $content .="Removing author: ".$all_persons[$iperson]["name"]." from the pool (contribution id).<BR/>\n";
+        if (($paper["abstract_id"])
+            &&(array_key_exists("abstracts_id",$all_persons[$iperson]))
+            &&($all_persons[$iperson]["abstracts_id"])
+            &&(in_array($paper["abstract_id"],$all_persons[$iperson]["abstracts_id"]))
+            ){
+            //$content .="Removing author: ".$all_persons[$iperson]["full_name"]." from the pool (named in the abstract).<BR/>\n";
+        } else if ((array_key_exists("contributions_id",$all_persons[$iperson]))&&($paper["contribution_id"])&&($all_persons[$iperson]["contributions_id"])&&(in_array($paper["contribution_id"],$all_persons[$iperson]["contributions_id"]))){
+            //$content .="Removing author: ".$all_persons[$iperson]["full_name"]." from the pool (named in the contribution).<BR/>\n";
         } else {
             $all_persons[$iperson]["possible_reviewer"]=true;
         }
@@ -108,31 +131,51 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
     $n_possible_reviewers=count($all_persons);
     $content .="Reviewers: ".$n_possible_reviewers."<BR/>\n";
 
+$reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
+print("<!--- ");
+print("Reviewers info:\n");
+var_dump($reviewers_info);
+print(" --->");
 
     //check registered
     $not_registered=0;
     $no_user_id=0;
     $n_possible_reviewers=0;
+    $unavailable_rev=0;
     if ((!($queryArray["ignore_registration"]))||($queryArray["ignore_registration"]==0)){
         for ($iperson=0;$iperson<count($all_persons);$iperson++){
             if (!($all_persons[$iperson]["registered_value"]==1)){
                 $not_registered+=1;
                 $all_persons[$iperson]["possible_reviewer"]=false;
-            }  else if (!(array_key_exists("user_id",$all_persons[$iperson]))){
-                print("<!--- Participant ".$person["name"]." has not user_id --->");
-                $no_user_id+=1;
-                $all_persons[$iperson]["possible_reviewer"]=false;
-            } else {
-                if ($all_persons[$iperson]["possible_reviewer"]){
-                    $n_possible_reviewers+=1;
-                }
             }
-        } //for each person
-        $content .="Rejecting not registered: ".$not_registered." or no user_id ".$no_user_id." ; Remaining: ".$n_possible_reviewers."<BR/>\n";
+        }
+        $content .="Rejecting not registered: ".$not_registered." ; Remaining: ".$n_possible_reviewers."<BR/>\n";
         $content .=" <A HREF='?".$_SERVER['QUERY_STRING']."&ignore_registration=1'>Click here to ignore registration information.</A><BR/>\n";
     } else {
         $content .=" <A HREF='?".$_SERVER['QUERY_STRING']."&ignore_registration=0'>Click here to use registration information.</A><BR/>\n";     
     }
+  
+    for ($iperson=0;$iperson<count($all_persons);$iperson++){
+        //print("<!--- Checking reviewer ".$all_persons[$iperson]["full_name"]." (".$all_persons[$iperson]["user_id"].") availability... --->\n");
+        if ((!(array_key_exists("user_id",$all_persons[$iperson])))||(trim(strlen($all_persons[$iperson]["user_id"]))==0)){
+            print("<!--- Participant ".$all_persons[$iperson]["full_name"]." has no user_id --->\n");
+            $no_user_id+=1;
+            $all_persons[$iperson]["possible_reviewer"]=false;
+        }  else if (
+            (array_key_exists($all_persons[$iperson]["user_id"],$reviewers_info))
+            &&(array_key_exists("unavailable",$reviewers_info[$all_persons[$iperson]["user_id"]]))
+            &&($reviewers_info[$all_persons[$iperson]["user_id"]]["unavailable"])
+            ){
+                print("<!--- Removing reviewer: ".$all_persons[$iperson]["full_name"]." from the pool (unavailable).<BR/> --->\n");
+                $all_persons[$iperson]["possible_reviewer"]=false;
+                $unavailable_rev+=1;
+        }  else {
+            if ($all_persons[$iperson]["possible_reviewer"]){
+                $n_possible_reviewers+=1;
+            }
+        }
+    } //for each person
+    $content .="Rejecting  no user_id ".$no_user_id." or unavailable: ".$unavailable_rev." ; Remaining: ".$n_possible_reviewers."<BR/>\n";
 
 
 
@@ -143,11 +186,11 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
         $n_possible_reviewers=0;
         $matches=false;
         for ($iperson=0;$iperson<count($all_persons);$iperson++){
-            if (preg_match("#".$all_persons[$iperson]["affiliation_region"]."#",$paper["regions"],$matches)){
-                $all_persons[$iperson]["possible_reviewer"]=false;
-                $same_region+=1;
-            } else{
-                if ($all_persons[$iperson]["possible_reviewer"]){
+            if ($all_persons[$iperson]["possible_reviewer"]){
+                if (preg_match("#".$all_persons[$iperson]["affiliation_region"]."#",$paper["regions"],$matches)){
+                    $all_persons[$iperson]["possible_reviewer"]=false;
+                    $same_region+=1;
+                } else{
                     $n_possible_reviewers+=1;
                 }
             }
@@ -170,7 +213,7 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
         $matches=false;
         for ($iperson=0;$iperson<count($all_persons);$iperson++){
             //var_dump($all_persons[$iperson]["author_MCs"]);
-            if (($all_persons[$iperson]["author_MCs"])&&(in_array($paper["MC"],$all_persons[$iperson]["author_MCs"]))){
+            if ((array_key_exists("author_MCs",$all_persons[$iperson]))&&($all_persons[$iperson]["author_MCs"])&&(in_array($paper["MC"],$all_persons[$iperson]["author_MCs"]))){
                 $same_mc+=1;
                 if ($all_persons[$iperson]["possible_reviewer"]){
                     $n_possible_reviewers+=1;
@@ -203,7 +246,7 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
         //var_dump($paper["track"]);
         for ($iperson=0;$iperson<count($all_persons);$iperson++){
             //var_dump($all_persons[$iperson]["author_tracks"]["code"]);
-            if (($all_persons[$iperson]["author_tracks"])&&(in_array($paper["track"]["code"],$all_persons[$iperson]["author_tracks"]))){
+            if ((array_key_exists("author_tracks",$all_persons[$iperson]))&&($all_persons[$iperson]["author_tracks"])&&(in_array($paper["track"]["code"],$all_persons[$iperson]["author_tracks"]))){
                 $same_mc+=1;
                 if ($all_persons[$iperson]["possible_reviewer"]){
                     $n_possible_reviewers+=1;
@@ -274,7 +317,8 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
     $content .="<b>There are ".$n_possible_reviewers." possible reviewers (random order):</b><BR/>\n";
 
     $person_fields=[
-            "id" => "ID", 
+            "user_id" => "User ID", 
+            "id" => "Event ID", 
             "full_name" => "Name", 
             "registered" => "Is registered?",
             "affiliation_name" => "Affiliation",
@@ -355,5 +399,12 @@ $T->set( 'txt5_val', "" );
 echo $T->get();
 
 //print("done");
+show_exec_time("edit_paper end");
+
+show_exec_time("end");
+if ($execution_record){
+    print($execution_record);
+}
+
 
 ?>

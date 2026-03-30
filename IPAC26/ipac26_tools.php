@@ -409,23 +409,16 @@ function send_email_file_to_contributor_as_editor($file,$recipient_role,$contrib
 
 
 function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null){
+    global $user;
     global $cws_config;
     if ($contribution){
         $filename=$cws_config['global']['messages_path']."/".$file;
         if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
         $message=file_get_contents($filename);
         $matches=[];
-        $matchtxt='/##([a-zA-Z=_:]+)##/';
+        $matchtxt='/##([a-zA-Z=@_:]+)##/';
         $returnValue = preg_match_all($matchtxt, $message, $matches);
         foreach($matches[1] as $thematch){
-            /*
-            var_dump($thematch);
-        print(" <BR/>\n");
-            print("the match $thematch <BR/>\n");
-            print(substr($thematch,1)." <BR/>\n");
-            print($contribution[substr($thematch,1)]);
-        print(" <BR/>\n");
-            */
             if (substr($thematch,0,1)=="="){
                 if (str_contains($thematch,":")){
                     $fields=explode(":",substr($thematch,1));
@@ -437,6 +430,22 @@ function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,
                     }
                 } else {
                     $newvalue=$contribution[substr($thematch,1)];
+                }
+                $message=str_replace("##".$thematch."##",$newvalue,$message);
+            } else if (substr($thematch,0,1)=="@"){
+                if (!$user){
+                    die("User is not defined");
+                }
+                if (str_contains($thematch,":")){
+                    $fields=explode(":",substr($thematch,1));
+                    //var_dump($fields);
+                    if (count($fields)==2){
+                        $newvalue=$user[$fields[0]][$fields[1]];
+                    } else if (count($fields)==3){
+                        $newvalue=$user[$fields[0]][$fields[1]][$fields[2]];
+                    }
+                } else {                    
+                    $newvalue=$user[substr($thematch,1)];
                 }
                 $message=str_replace("##".$thematch."##",$newvalue,$message);
             }
@@ -777,6 +786,50 @@ function assign_contribution_code($contribution_id,$code){
     }
 } //function assign_contribution_code($contribution_id,$code)
 
+function update_contribution_field($contribution_id,$update_field,$update_value){
+    global $Indico, $contribs_qa_data, $cws_config;
+    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+
+    $matches=[];
+    $matchtxt='/name="person_link_data" value="(.*)">/';
+    $returnValue = preg_match_all($matchtxt, $req_html["html"], $matches);
+    $person_link_data=html_entity_decode($matches[1][0]);
+    $Indico->api->config('header_content_type', 'application/json');
+    $post_data = [];
+    $post_data["person_link_data"]=$person_link_data;
+    $values=[  "title", "description" ];
+    foreach($values as $value) {
+        if (isset($req_json[$value])) {
+            $post_data[$value] = $req_json[$value];
+        }
+    }
+    $post_data[$update_field]=$update_value;
+    $ret=[];
+    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+    if (is_array($req)){
+        if (array_key_exists("success",$req)){
+            $ret["content"]="Contribution updated successfully<BR/>\n";
+            $ret["value"]=true;
+            return $ret;
+        } else {
+            print("Error updating contribution<BR/>\n");
+            //var_dump($req);
+            //die("Error");
+            $ret["content"]="Error updating contribution<BR/>\n";
+            $ret["value"]=false;
+            return $ret;
+        }
+    } else {
+        print("Error updating contribution<BR/>\n");
+        //var_dump($req);
+        //die("Error");
+        $ret["content"]="Error updating contribution<BR/>\n";
+        $ret["value"]=false;
+        return $ret;
+    }
+} //function update_contribution_field
+
+
 
 function comment_paper($contribution_id,$comment,$use_session_token=true,$use_indico_token=false){
     global $Indico;
@@ -1023,6 +1076,7 @@ function update_participants(){
 function get_participants($force_update=false){
     global $cws_config;
     global $participants;
+    global $contributions_by_abs_id;
     show_exec_time("get_participants start");
 
     if (!($participants)){

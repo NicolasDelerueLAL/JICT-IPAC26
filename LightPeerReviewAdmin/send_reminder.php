@@ -126,7 +126,7 @@ if (($reviewers)&&(count($reviewers)>0)){
                 $overdue=true;
                 //var_dump($reviewer);
                 if (($_POST)&&(($_POST["reviewer"]==$reviewer["id"])||($_POST["reviewer"]=="all"))){
-                    $bcc_address_array=array( "peer-review@ipac26.org" , "editor@ipac26.org" );
+                    $bcc_address_array=array( "peer-review@ipac26.org"  );
                     $use_indico_token=true;
                     $use_session_token=false;        
                     //print("use_indico_token: $use_indico_token ,use_session_token: $use_session_token \n");
