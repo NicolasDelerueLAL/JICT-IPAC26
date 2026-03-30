@@ -117,6 +117,11 @@ $content .="<BR/>\n";
 
 
 if ($_POST){
+    $reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
+    if (!(array_key_exists($this_person["user_id"],$reviewers_info))){
+        $reviewers_info[$this_person["user_id"]]=[];
+        //print("Creating entry \n");
+    }
     $sender="peer-review@ipac26.org";
     $bcc_address_array=array( "peer-review@ipac26.org" );
     $lpr_manager="EventPerson:35761";
@@ -133,25 +138,30 @@ if ($_POST){
         $content .="To leave a review on this paper, go <A HREF='https://indico.jacow.org/event/".$cfg['indico_event_id']."/papers/". $queryArray["contribution_id"]."/' >here</A>, click on \"Review\" and fill the form.<BR/>\n";
         sleep(0.1);
         send_email_file_to_eventperson("reviewer_accepted.txt",$lpr_manager,$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
-        
+        $reviewers_info[$this_person["user_id"]][$queryArray["contribution_id"]]="accepted";        
     } else {
         if (($_POST["action"]=="decline_no_review")||($_POST["action"]=="decline_not_eligible")){
             $content .="Thanks you for your answer. We are sorry that you are unavailable to review papers for IPAC'26.<BR/>\n";
             send_email_file_to_eventperson("message_thank_you_no_review.txt","EventPerson:".$this_person["id"],$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
+            $reviewers_info[$this_person["user_id"]][$queryArray["contribution_id"]]="declined";
+            $reviewers_info[$this_person["user_id"]]["unavailable"]=true;
         //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
         } else if ($_POST["action"]=="decline_no_reply"){
             $content .="Recorded that there were no reply from the reviewer<BR/>\n";
             send_email_file_to_eventperson("message_no_reply.txt","EventPerson:".$this_person["id"],$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
         //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
+            $reviewers_info[$this_person["user_id"]][$queryArray["contribution_id"]]="declined";
         } else {
             $content .="Thanks you for your answer. We are sorry that you are unavailable to review this contribution.<BR/>\n";
-        send_email_file_to_eventperson("message_thank_you_unavailable.txt","EventPerson:".$this_person["id"],$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
+            send_email_file_to_eventperson("message_thank_you_unavailable.txt","EventPerson:".$this_person["id"],$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
         //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
+            $reviewers_info[$this_person["user_id"]][$queryArray["contribution_id"]]="declined";
         }
         comment_paper($queryArray["contribution_id"],"Reviewer declined ".$this_person["user_id"],use_indico_token:true,use_session_token:false);
         comment_paper($queryArray["contribution_id"],"Reason given by ".$this_person["user_id"].": ".$_POST["action"],use_indico_token:true,use_session_token:false);
         send_email_file_to_eventperson("reviewer_declined.txt",$lpr_manager,$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
     }
+    $fwret=file_write_json(  $cws_config['global']['data_path']."/reviewers_info.json",$reviewers_info);
 } else {
     //$content .="Thanks you for your help with IPAC'26 Light Peer Review process. Will you be able to review the contribution described above?<BR/>\n";
 
