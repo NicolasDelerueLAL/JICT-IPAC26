@@ -130,7 +130,7 @@ if ($_POST){
     $copy_for_sender=false;
     if ($_POST["action"]=="accept"){
         assign_reviewer_to_paper($queryArray["contribution_id"], $this_person["user_id"]);
-        send_email_file_to_eventperson("message_thank_you_accept.txt","EventPerson:".$this_person["id"],$sender,true,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
+        send_email_file_to_eventperson("message_thank_you_accept.txt","EventPerson:".$this_person["id"],$sender,$copy_for_sender,$contribution,$bcc_address_array,use_session_token:$use_session_token,use_indico_token:$use_indico_token);
         //print("<BR/><BR/><BR/><BR/><BR/>comment<BR/>\n");
         comment_paper($queryArray["contribution_id"],"Reviewer accepted ".$this_person["user_id"],use_indico_token:true,use_session_token:false);
         $content .="Thanks you for accepting to review this contribution.<BR/>\n";

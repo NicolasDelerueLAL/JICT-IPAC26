@@ -366,10 +366,10 @@ function show_paper_info($contribution_id,$paper=false){
 
 
 function show_reviewer_info($person){
-    print("<!---\n");
-    print("show_reviewer_info for person \n");
-    var_dump($person);
-    print(" --->\n");
+    //print("<!---\n");
+    ///print("show_reviewer_info for person \n");
+    //var_dump($person);
+    //print(" --->\n");
     global $contributions;
     global $abstracts;
     $content="";

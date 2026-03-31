@@ -111,7 +111,7 @@ foreach($all_persons as $person){
     if ($person["id"]==$queryArray["person_id"]){
         $the_reviewer=$person;
         $content .= show_reviewer_info($person);
-        var_dump(show_reviewer_info($person));
+        //var_dump(show_reviewer_info($person));
         break;
     }
 } //for each person
