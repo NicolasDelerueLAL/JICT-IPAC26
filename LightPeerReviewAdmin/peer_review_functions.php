@@ -24,7 +24,7 @@ function format_time($time){
 }
 
 
-function load_papers($disable_cache,$disable_abtracts_cache=true){
+function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_probability_percent=10){
     global $Indico;
     global $all_papers;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
@@ -34,13 +34,13 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
 
     show_exec_time("load_paper start");
 
-    load_abstracts($disable_abtracts_cache);
+    load_abstracts($disable_abstracts_cache);
 
     load_contributions($disable_cache);
 
-    $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =$disable_cache;
-    $req_papers =$Indico->request( "/event/{id}/manage/papers/assignment-list/export-json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
+    //$_rqst_cfg=[];
+    //$_rqst_cfg['disable_cache'] =$disable_cache;
+    $req_papers =$Indico->request( "/event/{id}/manage/papers/assignment-list/export-json", 'GET', false, array( 'return_data' =>true, 'quiet' =>false , 'disable_cache' => $disable_cache) );
     //print("\nContrib\n");
     //var_dump($contributions);
     //die("here");
@@ -67,6 +67,7 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
     show_exec_time("load_paper bf loop");
 
     for($ploop=0;$ploop<count($all_papers);$ploop++){
+        show_exec_time("load_paper loop $ploop");
         $paper=$all_papers[$ploop];
         $paper["round"]=1;
         $paper["contribution_id"]=$paper["contribution"]['id'];
@@ -114,7 +115,7 @@ function load_papers($disable_cache,$disable_abtracts_cache=true){
         $paper["status"]=$paper["state"]["name"];
         $paper["reviewers"]="";
         $paper["edit_link"]="<A HREF='edit_paper.php?contribution_id=".$paper["contribution_id"]."'>Edit paper</A>";
-        $reviewers=get_reviewers_for_contribution($contribution["id"]);
+        $reviewers=get_reviewers_for_contribution($contribution["id"],recheck_probability_percent:$recheck_probability_percent);
         //print("<!---\n"); 
         //print(" reviewers \n"); 
         //var_dump($reviewers);
@@ -315,16 +316,31 @@ function show_paper_info($contribution_id,$paper=false){
         $content .="<BR/><BR/>\n";
         $content .="<b style='color:green;'>".count($the_rev["reviews"])." reviews received for the latest revision:</b>\n";
         $content .="<table border=1>\n";
-        for($irating=-3;$irating<count($the_rev["reviews"][0]["ratings"]);$irating++){
+        for($irating=-5;$irating<count($the_rev["reviews"][0]["ratings"]);$irating++){
             $content .="<tr>\n";
             for($ireview=-1;$ireview<count($the_rev["reviews"]);$ireview++){
                 $content .="<td>\n";
-                if ($irating==-3){
+                if ($irating==-5){
                     if ($ireview>=0){
                         $content .=$the_rev["reviews"][$ireview]["user"]["full_name"];
                         $content .=" (".$the_rev["reviews"][$ireview]["user"]["id"].")";
                     } else {
                         $content .="Name";
+                    }
+                } else if ($irating==-4){
+                    if ($ireview>=0){
+                        $content .=$the_rev["reviews"][$ireview]["user"]["email"];
+                    } else {
+                        $content .="email";
+                    }
+                } else if ($irating==-3){
+                    if ($ireview>=0){
+                        $content .=$the_rev["reviews"][$ireview]["user"]["affiliation"];
+                        if ($the_rev["reviews"][$ireview]["user"]["affiliation_meta"]){
+                            $content .=" (".$the_rev["reviews"][$ireview]["user"]["affiliation_meta"]["country_name"].")";
+                        }
+                    } else {
+                        $content .="Affiliation";
                     }
                 } else if ($irating==-2){
                     if ($ireview>=0){
@@ -432,11 +448,17 @@ function reviewer_activity($user_id){
         //var_dump($reviewers_info[$person["user_id"]]);
         foreach($reviewers_info[$user_id] as $id => $action){
             //print(" $id / $action \n");
-            $content .="<li><A HREF='https://indico.jacow.org/event/95/contributions/".$id."/'>Contribution $id</A>: $action </li>\n";
-            if (!array_key_exists($action,$retval["actions"])){
-                $retval["actions"][$action]=0;
+            if ($id=="unavailable"){
+                $content .="<li><b color='red'>Unavailable</b></li>\n";
+            } else if (($id=="name")||($id=="event_id")||($id=="email")||($id=="date")||($id=="reminder")){
+                $content .="";
+            } else {                
+                $content .="<li><A HREF='https://indico.jacow.org/event/95/contributions/".$id."/'>Contribution $id</A>: $action </li>\n";
+                if (!array_key_exists($action,$retval["actions"])){
+                    $retval["actions"][$action]=0;
+                }
+                $retval["actions"][$action]+=1;
             }
-            $retval["actions"][$action]+=1;
         }
         $content .="</ul>\n";
     }
@@ -489,22 +511,54 @@ function assign_reviewer_to_paper($contribution_id, $person_id){
 }
 
 //Reviewer functions
-function get_reviewers_for_contribution($contribution_id){
+function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$recheck_probability_percent=0){
     //print("<!--- get_reviewers_for_contribution $contribution_id --->\n");
     global $Indico;
     global $cws_config;
+    global $reviewers_info;
     show_exec_time("get_reviewers_for_contribution start");
-    $reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
     if (!$reviewers_info){
-        print("<!--- Recretating reviewers_info --->\n");
+        $reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
+    }
+    if (!$reviewers_info){
+        print("<!--- Recreating reviewers_info --->\n");
         $reviewers_info=[];
     }
 
+    if (($recheck_probability_percent>0)&&(rand(0,100)>$recheck_probability_percent)){
+        //var_dump($reviewers_info);
+        $retval=[];
+        $ival=0;
+        foreach($reviewers_info as $id => $info){
+            if (array_key_exists($contribution_id,$info)){
+                //print("(no recheck) Reviewer $id has action ".$info[$contribution_id]." for contribution $contribution_id \n");
+                //var_dump($info);
+                $retval[$ival]=[];
+                $retval[$ival]["id"]="".$id;
+                $retval[$ival]["name"]=$info["name"];
+                $retval[$ival]["email"]=$info["email"];
+                $retval[$ival]["event_id"]=$info["event_id"];
+                /*
+                $retval[$ival]["date"]=$reviewers_from_history["allocation_date"][$id];
+                $retval[$ival]["reminder"]=$reviewers_from_history["reminder_date"][$id];
+                */
+                $retval[$ival]["action"]=$info[$contribution_id];
+                $retval[$ival]["date"]=$info["date"][$contribution_id];
+                $retval[$ival]["reminder"]=$info["reminder"][$contribution_id];
+                //$retval[$ival]["date"]=$reviewers_from_history["allocation_date"][$id];
+                //$retval[$ival]["reminder"]=$reviewers_from_history["reminder_date"][$id];
+                $ival+=1;
+            }            
+        }
+        show_exec_time("get_reviewers_for_contribution end (no recheck)");
+        return $retval;
+    } //no recheck
+
     $reviewers_from_history=get_paper_reviewers_status($contribution_id);
-    $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =true;
+    //$_rqst_cfg=[];
+    //$_rqst_cfg['disable_cache'] =true;
     $post_data=array( "contribution_id" => "".$contribution_id );
-    $req_papers =$Indico->request( "/event/{id}/manage/papers/assignment-list/unassign/content_reviewer", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true ) );
+    $req_papers =$Indico->request( "/event/{id}/manage/papers/assignment-list/unassign/content_reviewer", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => $disable_chache ) );
     if (is_array($req_papers)){
         $all_data=$req_papers['html'];
     } else if (is_string($req_papers)){
@@ -545,6 +599,8 @@ function get_reviewers_for_contribution($contribution_id){
                     $retval[$ival]["reminder"]=$reviewers_from_history["reminder_date"][$id];
                     $retval[$ival]["action"]="accepted";
                     $retval[$ival]["event_id"]=get_participant("user_id",$id)["id"];
+                    $retval[$ival]["name"]=get_participant("user_id",$id)["full_name"];
+                    $retval[$ival]["email"]=get_email_from_userid($id);
                     $found=true;
                 }
             }
@@ -569,6 +625,14 @@ function get_reviewers_for_contribution($contribution_id){
                 //print("Creating entry \n");
             }
             $reviewers_info[$id][$contribution_id]=$action;
+            $reviewers_info[$id]["id"]="".$id;
+            $reviewers_info[$id]["event_id"]=get_participant("user_id",$id)["id"];
+            $reviewers_info[$id]["name"]=get_full_name_from_userid($id);
+            $reviewers_info[$id]["email"]=get_email_from_userid($id);
+            $reviewers_info[$id]["action"]=$action;
+            $reviewers_info[$id]["date"]="";
+            $reviewers_info[$id]["reminder"]="";
+            
             if ($action=="declined"){
                 if (array_key_exists("decline_reason",$reviewers_from_history)){
                     //print("Reason for decline: ");
@@ -591,18 +655,24 @@ function get_reviewers_for_contribution($contribution_id){
             $reviewers_info[$rev["id"]]=[];
             //print("Creating entry \n");
         }
+        $reviewers_info[$rev["id"]]["event_id"]=$rev["event_id"];
+        $reviewers_info[$rev["id"]]["name"]=$rev["name"];
+        $reviewers_info[$rev["id"]]["email"]=$rev["email"];
+
         if (!(array_key_exists("action",$rev))){
                 print("Warning: reviewer ".$rev["id"]." is among the reviewers lists but not has not accepted in the timeline for contribution ".$contribution_id."! <BR/>\n");
             $reviewers_info[$rev["id"]][$contribution_id]="In reviewers list";
         } else {
             $reviewers_info[$rev["id"]][$contribution_id]=$rev["action"];
+            $reviewers_info[$rev["id"]]["date"][$contribution_id]=$rev["date"];
+            $reviewers_info[$rev["id"]]["reminder"][$contribution_id]=$rev["reminder"];
             //print("Action: ".$rev["action"]."\n");
         }
         //print("--->\n");
     }
     $fwret=file_write_json(  $cws_config['global']['data_path']."/reviewers_info.json",$reviewers_info);
     print($fwret?"<!--- Reviewers file saved successfully --->\n":"Error saving reviewers data\n");
-    show_exec_time("get_reviewers_for_contribution end");
+    show_exec_time("get_reviewers_for_contribution end (rechecked)");
     return $retval;    
 } //get_reviewers
 

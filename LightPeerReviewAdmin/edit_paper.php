@@ -36,12 +36,18 @@ $Indico =new INDICO( $cfg );
 $user =$Indico->auth();
 if (!$user) exit;
 
+show_exec_time("bf check lpr rights");
+
 check_lpr_rights();
+show_exec_time("af check lpr rights");
 
 $Indico->load();
 
-$disable_cache=true;
+show_exec_time("bf load papers");
+
+$disable_cache=false;
 load_papers($disable_cache);
+show_exec_time("af load papers");
 
 
 $T =new TMPL( $cfg['template'] );
@@ -86,6 +92,9 @@ if (!$reviewers_info){
 
 $content .="<center><h2>Information about paper ".$queryArray["contribution_id"]."</h2></center><BR/>\n";
 
+show_exec_time("search paper");
+
+
 $paper_val=-1;
 for($ploop=0;$ploop<count($all_papers);$ploop++){    
     $paper=$all_papers[$ploop];    
@@ -97,6 +106,7 @@ if ($paper_val==-1){
     die("Unable to find paper with contribution ID ".$queryArray["contribution_id"]);
 }
 $paper=$all_papers[$paper_val];
+show_exec_time("paper found");
 
 $content .= show_paper_info($queryArray["contribution_id"],$paper);
 
@@ -131,10 +141,13 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
     $n_possible_reviewers=count($all_persons);
     $content .="Reviewers: ".$n_possible_reviewers."<BR/>\n";
 
+//show_exec_time("load reviewers info");
+
+
 $reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
 print("<!--- ");
 print("Reviewers info:\n");
-var_dump($reviewers_info);
+//var_dump($reviewers_info);
 print(" --->");
 
     //check registered
@@ -158,7 +171,7 @@ print(" --->");
     for ($iperson=0;$iperson<count($all_persons);$iperson++){
         //print("<!--- Checking reviewer ".$all_persons[$iperson]["full_name"]." (".$all_persons[$iperson]["user_id"].") availability... --->\n");
         if ((!(array_key_exists("user_id",$all_persons[$iperson])))||(trim(strlen($all_persons[$iperson]["user_id"]))==0)){
-            print("<!--- Participant ".$all_persons[$iperson]["full_name"]." has no user_id --->\n");
+            //print("<!--- Participant ".$all_persons[$iperson]["full_name"]." has no user_id --->\n");
             $no_user_id+=1;
             $all_persons[$iperson]["possible_reviewer"]=false;
         }  else if (
@@ -166,7 +179,7 @@ print(" --->");
             &&(array_key_exists("unavailable",$reviewers_info[$all_persons[$iperson]["user_id"]]))
             &&($reviewers_info[$all_persons[$iperson]["user_id"]]["unavailable"])
             ){
-                print("<!--- Removing reviewer: ".$all_persons[$iperson]["full_name"]." from the pool (unavailable).<BR/> --->\n");
+                //print("<!--- Removing reviewer: ".$all_persons[$iperson]["full_name"]." from the pool (unavailable).<BR/> --->\n");
                 $all_persons[$iperson]["possible_reviewer"]=false;
                 $unavailable_rev+=1;
         }  else {
@@ -177,6 +190,7 @@ print(" --->");
     } //for each person
     $content .="Rejecting  no user_id ".$no_user_id." or unavailable: ".$unavailable_rev." ; Remaining: ".$n_possible_reviewers."<BR/>\n";
 
+show_exec_time("check region");
 
 
     //check region
@@ -205,6 +219,8 @@ print(" --->");
         }
     }
 
+show_exec_time("check MC");
+
     //check MC
     $paper["MC"]=$contributions[$queryArray["contribution_id"]]["MC"];
     if (($paper["MC"])&&((!($queryArray["ignore_mc"]))||($queryArray["ignore_mc"]==0))){
@@ -232,6 +248,7 @@ print(" --->");
         }
     }
 
+show_exec_time("check track");
     //check track
     //by default track is not ignored
     if (!($queryArray["ignore_track"])){
@@ -265,7 +282,8 @@ print(" --->");
         }
     }
 
-    
+    show_exec_time("check activity");
+
     //check reviewer activity
     //by default reviewer activity is not ignored
     if (!($queryArray["ignore_reviews"])){
@@ -311,6 +329,7 @@ print(" --->");
     }
     */
     
+    show_exec_time("check done");
 
     $content .="<BR/><BR/>\n";
     shuffle($all_persons);
@@ -330,6 +349,7 @@ print(" --->");
             "assign_link" => "Assign",
     ];
     $num_fields=[ "id" ];
+    show_exec_time("create table");
 
     $content .="
 <div class=\"table-wrap\"><table id='person_table' class=\"sortable\" width=\"95%\">
@@ -405,6 +425,6 @@ show_exec_time("end");
 if ($execution_record){
     print($execution_record);
 }
-
+show_load_time();
 
 ?>

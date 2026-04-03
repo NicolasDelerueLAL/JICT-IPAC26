@@ -26,6 +26,7 @@ require_lib( 'jict', '1.0' );
 require_lib( 'indico', '1.0' );
 
 require('peer_review_functions.php');
+show_exec_time("list paper start");
 
 
 $cfg =config( 'LightPeerReviewAdmin' );
@@ -38,8 +39,12 @@ if (!$user) exit;
 
 check_lpr_rights();
 
+show_exec_time("lpr rights checked");
+
+
 $Indico->load();
 
+show_exec_time("indico loaded");
 
 $T =new TMPL( $cfg['template'] );
 $T->set([
@@ -199,6 +204,7 @@ $T->set( 'all_n', $todo_n +$done_n );
 echo $T->get();
 
 show_exec_time("end");
+show_load_time();
 if ($execution_record){
     print($execution_record);
 }

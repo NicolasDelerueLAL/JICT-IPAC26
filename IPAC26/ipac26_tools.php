@@ -12,7 +12,10 @@ function show_exec_time($msg=""){
     $execution_record.="<!--- ".round((microtime(true)-$time_start),3)." @ $msg --->\n";
     
 } //show_exec_time
-
+function show_load_time(){
+    global $time_start;
+    print("Page generated in ".round((microtime(true)-$time_start),3)." seconds.<BR/>\n");
+} // show_load_time
 /*-----------------------------------------
 */
 class AI_REQUEST {
@@ -84,10 +87,10 @@ function load_abstracts($disable_cache=false){
     global $Indico;
     global $abstracts,$all_abstracts;
     show_exec_time("load_abstracts_start disable_cache $disable_cache");
-    $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =$disable_cache;
+    //$_rqst_cfg=[];
+    //$_rqst_cfg['disable_cache'] =$disable_cache;
     //$_rqst_cfg['disable_cache'] =true;
-    $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
+    $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>false ,  'disable_cache' => $disable_cache) );
     $abstracts=[];
     //var_dump(json_decode($req_abstracts,true));
     //var_dump(json_decode($req_abstracts,true)['abstracts']);
@@ -521,12 +524,12 @@ function get_contribution($contribution_id,$use_session_token=true){
     //print("Title: ".$req["title"]."<BR/>\n");
 } //get_contribution
 
-function get_paper($contribution_id,$use_session_token=true){
+function get_paper($contribution_id,$use_session_token=true,$disable_cache=false){
     global $Indico;
     //print("<!--- get_paper $contribution_id --->\n");
     show_exec_time("get_paper start");
     //global $cws_config;
-    $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id, 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token ) );
+    $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id, 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' => $disable_cache , 'use_session_token' => $use_session_token ) );
     //var_dump($req);
     //print("Title: ".$req["contribution"]["title"]."<BR/>\n");
     if (!$req["contribution"]["title"]){
@@ -844,9 +847,9 @@ function comment_paper($contribution_id,$comment,$use_session_token=true,$use_in
         $use_session_token=false;
     }
     $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id."/comment", 'POST', $post_data , array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token ) );
-    print("\n<!--- comment:\n");
-    var_dump($req);
-    print(" --->");
+    //print("\n<!--- comment:\n");
+    //var_dump($req);
+    //print(" --->");
     show_exec_time("comment_paper end");
 }//comment_paper
 
@@ -896,9 +899,7 @@ function update_participants(){
     }
 
     print("<!--- Updating participants list --->");
-    $_rqst_cfg=[];
-    $_rqst_cfg['disable_cache'] =false;
-    $req_persons =$Indico->request( "/event/{id}/manage/persons/", 'GET', false, array( 'return_data' =>true, 'quiet' =>true ) );
+    $req_persons =$Indico->request( "/event/{id}/manage/persons/", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => false ) );
     $matchtxt='#<tr id="person-([0-9]+)"#';
     $returnValue = preg_match_all($matchtxt, $req_persons , $matches, PREG_OFFSET_CAPTURE);
     $all_persons=[];
@@ -1142,17 +1143,18 @@ function check_lpr_rights(){
     for ($mcloop=0;$mcloop<9;$mcloop++){
         $allowed_roles[]="MC".$mcloop;
     }
-    print("<!--- ");
-    print("allowed_roles: \n");
-    print_r($allowed_roles);
-    print("user roles: \n");
-    print_r($_SESSION['indico_oauth']['user']['roles']);
+    
+    //print("<!--- ");
+    //print("allowed_roles: \n");
+    //print_r($allowed_roles);
+    //print("user roles: \n");
+    //print_r($_SESSION['indico_oauth']['user']['roles']);
+    //print("\n--->\n");
     if (empty(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ))){
         $allowed=false;
     } else {
         $allowed=true;
     }
-    print("\n--->\n");
     if (!$allowed) {
         print("You don't have the right to access this page.<BR/>\n");
         print("You are identified as ".$_SESSION['indico_oauth']['user']['first_name']." ".$_SESSION['indico_oauth']['user']['last_name']."<BR/>\n");
@@ -1160,10 +1162,10 @@ function check_lpr_rights(){
         print("Expected roles: ".implode(", ",$allowed_roles)."<BR/>\n");
         die("End");
     } else {
-        print("<!--- ");
-        print("Not empty...\n");
-        print_r(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ));
-        print("\n--->\n");
+        //print("<!--- ");
+        //print("Not empty...\n");
+        //print_r(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['roles'] ));
+        //print("\n--->\n");
     }
 } // check_lpr_rights
 

@@ -182,5 +182,6 @@ show_exec_time("end");
 if ($execution_record){
     print($execution_record);
 }
+show_load_time();
 
 ?>
