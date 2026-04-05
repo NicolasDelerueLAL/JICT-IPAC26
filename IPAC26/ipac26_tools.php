@@ -10,7 +10,6 @@ function show_exec_time($msg=""){
     global $time_start,$execution_record;
     print("<!--- Execution time: ".round((microtime(true)-$time_start),3)." @ $msg --->\n");
     $execution_record.="<!--- ".round((microtime(true)-$time_start),3)." @ $msg --->\n";
-    
 } //show_exec_time
 function show_load_time(){
     global $time_start;
@@ -86,11 +85,12 @@ function remove_editor_from_contact_info(){
 function load_abstracts($disable_cache=false){
     global $Indico;
     global $abstracts,$all_abstracts;
-    show_exec_time("load_abstracts_start disable_cache $disable_cache");
+    show_exec_time("load_abstracts start disable_cache $disable_cache");
     //$_rqst_cfg=[];
     //$_rqst_cfg['disable_cache'] =$disable_cache;
     //$_rqst_cfg['disable_cache'] =true;
-    $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>false ,  'disable_cache' => $disable_cache) );
+    $req_abstracts =$Indico->request( "/event/{id}/manage/abstracts/abstracts.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>false ,  'disable_cache' => $disable_cache,  'cache_time' => 60*60*24*7 ) );
+    show_exec_time("load_abstracts after req");
     $abstracts=[];
     //var_dump(json_decode($req_abstracts,true));
     //var_dump(json_decode($req_abstracts,true)['abstracts']);
@@ -105,14 +105,15 @@ function load_abstracts($disable_cache=false){
         var_dump($req_abstracts);
         die("Unable to decode req_abstracts ");
     }
+    show_exec_time("load_abstracts bf loop");
     foreach($all_abstracts as $abstract){
         $abstracts[$abstract["id"]]=$abstract;
     }
     show_exec_time("load_abstracts_end");
 }//load_abstracts
 
-function load_contributions($disable_contributions_cache=false,$fix_affiliations=false){
-    global $Indico,$cws_config;
+function load_contributions($disable_contributions_cache=false,$query_affiliations=false){
+    global $Indico;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
     global $abstracts;
     show_exec_time("load_contributions_start");
@@ -122,12 +123,6 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
         $cache_time=1;
     } else {
         $cache_time=60*60*24*7;
-    }
-    //$_rqst_cfg['disable_cache'] =true;
-    $affiliation_fixes=file_read_json($cws_config['global']['data_path']."/affiliation_fixes.json",true);
-    if (!($affiliation_fixes)){
-        print("Unable to read ".$cws_config['global']['data_path']."/affiliation_fixes.json");
-        $affiliation_fixes=[];
     }
     $req_contributions =$Indico->request( "/event/{id}/manage/contributions/contributions.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => $disable_contributions_cache, 'cache_time' => $cache_time)  );
     $contributions=[];
@@ -168,61 +163,11 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
                 $contribution["speaker_email"]=$person["email"];
                 $contribution["speaker_affiliation"]=$person["affiliation"];
             }
-            if ((!($person["affiliation_link"]))||($person["affiliation_link"]=="NULL")||($person["affiliation_link"]==NULL)||(str_contains($person["affiliation"],";"))){
-                if ($fix_affiliations){
-                    $affiliations=[];
-                    if (str_contains($person["affiliation"],";")){
-                        $affiliations=explode(";",$person["affiliation"]);
-                    } else {
-                        $affiliations[]=$person["affiliation"];
-                    }
-                    for ($jaff=0;$jaff<count($affiliations);$jaff++){
-                        if ($jaff==0){
-                            $link_name="affiliation_link";
-                        } else {
-                            $link_name="affiliation_link_".($jaff+1);
-                        }
-                        $person_affiliation=trim($affiliations[$jaff]);
-                        $Indico->api->config('disable_cache', false);
-                        $Indico->api->config('cache_time', 60*60*24*7);
-                        $req_aff =$Indico->request( "/api/affiliations/?q=".urlencode($person_affiliation), 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => false, 'cache_time' => 60*60*24*7) );
-                        if (count($req_aff)>1){
-                            for ($iaff=0;$iaff<count($req_aff);$iaff++){
-                                if ($req_aff[$iaff]["name"]==$person_affiliation){
-                                    $person[$link_name]=$req_aff[$iaff];   
-                                    $contribution["persons"][$ipers]=$person;                    
-                                }                     
-                            }
-                        } else if (count($req_aff)==1){
-                            $person[$link_name]=$req_aff[0];   
-                            $contribution["persons"][$ipers]=$person;                    
-                        }
-                    }
-                    /*
-                    if (count($affiliations)>1){
-                        print("Person with multiple affiliations<BR/>\n");
-                        var_dump($person);
-                    }
-                    */
-                }
-            }
-            //fix incorrect affiliations
-            if (($person["affiliation_link"])&&($person["affiliation_link"]["id"])&&(array_key_exists($person["affiliation_link"]["id"],$affiliation_fixes))){
-                if (($person["affiliation_link"])&&($person["affiliation_link"]["id"])&&(!$person["affiliation_link"]["id"]==null)){
-                    $iwhile=0;
-                    while ((array_key_exists($person["affiliation_link"]["id"],$affiliation_fixes))&&($iwhile<5)){
-                        if (array_key_exists("Accept",$affiliation_fixes[$person["affiliation_link"]["id"]])){
-                            if ($affiliation_fixes[$person["affiliation_link"]["id"]]["Accept"]==1){
-                                break;
-                            }
-                        }
-                        $person["affiliation_link"]=$affiliation_fixes[$person["affiliation_link"]["id"]];
-                        //var_dump($person["affiliation_link"]);
-                        $iwhile+=1;
-                    }
-                }
-                $contribution["persons"][$ipers]=$person;                    
-            }
+            //affiliation handling
+            $person=fix_affiliation($person,$query_affiliations);
+            $contribution["persons"][$ipers]=$person;                    
+
+
             if (($person["affiliation_link"])&&($person["affiliation_link"]["country_code"])){
                 $the_region=get_region($person["affiliation_link"]["country_code"]);
                 if (!(preg_match("#".$the_region."#",$contribution["regions"]))){
@@ -244,7 +189,7 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
         }
         if (strlen($contribution["regions"])>0){
             $contribution["regions"]=substr($contribution["regions"],0,strlen($contribution["regions"])-2);
-        }
+        }        
         if ($contribution["abstract_id"]){
             $contributions_by_abs_id[$contribution["abstract_id"]]=$contribution["id"];
             //Looking for the submitter
@@ -259,6 +204,88 @@ function load_contributions($disable_contributions_cache=false,$fix_affiliations
     show_exec_time("load_contributions_end");
 }// load_contributions
 
+
+function fix_affiliation($person,$query_affiliations=true){  
+    global $Indico,$cws_config;
+    global $affiliation_fixes;
+    //show_exec_time("fix_affiliation start");
+    if (!($affiliation_fixes)){
+        global $cws_config;
+        $affiliation_fixes=file_read_json($cws_config['global']['data_path']."/affiliation_fixes.json",true);
+    }
+    if (!($affiliation_fixes)){
+        print("Unable to read ".$cws_config['global']['data_path']."/affiliation_fixes.json");
+        $affiliation_fixes=[];
+    }
+
+    if (
+        (!($person["affiliation_link"]))
+        ||($person["affiliation_link"]=="NULL")
+        ||($person["affiliation_link"]==NULL)
+        ||(str_contains($person["affiliation"],";"))){
+            //print("<!--- Querying affiliation for person: ".$person["full_name"]." affiliation: ".$person["affiliation"]." --->\n");
+            $affiliations=[];
+            if (str_contains($person["affiliation"],";")){
+                $affiliations=explode(";",$person["affiliation"]);
+            } else {
+                $affiliations[]=$person["affiliation"];
+            }
+            for ($jaff=0;$jaff<count($affiliations);$jaff++){
+                if ($jaff==0){
+                    $link_name="affiliation_link";
+                } else {
+                    $link_name="affiliation_link_".($jaff+1);
+                }
+                $person_affiliation=trim($affiliations[$jaff]);
+                //$Indico->api->config('disable_cache', false);
+                //$Indico->api->config('cache_time', 60*60*24*7);
+                if ($query_affiliations){
+                    $req_aff =$Indico->request( "/api/affiliations/?q=".urlencode($person_affiliation), 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => false, 'cache_time' => 60*60*24*7*2) );
+                    if (count($req_aff)>1){
+                        for ($iaff=0;$iaff<count($req_aff);$iaff++){
+                            if ($req_aff[$iaff]["name"]==$person_affiliation){
+                                $person[$link_name]=$req_aff[$iaff];   
+                            }                     
+                        }
+                    } else if (count($req_aff)==1){
+                        $person[$link_name]=$req_aff[0];   
+                    }
+                } else {
+                    $person[$link_name]=["name"=>$person_affiliation , "id"=>null, "country_code"=>null, "country_name"=>null];
+                }
+            } //for each affiliation
+    } // if no affiliation link or multiple affiliations
+    //fix incorrect affiliations
+
+    $link_name="affiliation_link";
+    $jaff=0;
+    while(array_key_exists($link_name, $person)){
+        //print("<!--- Checking affiliation fix for person: ".$person["full_name"]." affiliation: ".$person[$link_name]["name"]." ".$person[$link_name]["id"]." --->\n");
+        if (($person[$link_name])&&($person[$link_name]["id"])&&(!$person[$link_name]["id"]==null)&&(array_key_exists($person[$link_name]["id"],$affiliation_fixes))){
+            $iwhile=0;
+            while ((array_key_exists($person[$link_name]["id"],$affiliation_fixes))&&($iwhile<5)){
+                if (array_key_exists("Accept",$affiliation_fixes[$person[$link_name]["id"]])){
+                    if ($affiliation_fixes[$person[$link_name]["id"]]["Accept"]==1){
+                        break;
+                    }
+                }
+                $person[$link_name]=$affiliation_fixes[$person[$link_name]["id"]];
+                //print("<!--- Affiliation fix applied for person: ".$person["full_name"]." affiliation: ".$person[$link_name]["name"]." --->\n");
+                $iwhile+=1;
+            } // while affiliation fix exists
+        } // if affiliation id exists and is not null
+        $jaff+=1;
+        if ($jaff==0){
+            $link_name="affiliation_link";
+        } else {
+            $link_name="affiliation_link_".($jaff+1);
+        }
+    } //while affiliation link exists
+
+    //show_exec_time("fix_affiliation end");
+    return $person;
+
+} //fix_affiliation
 
 function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$copy_for_sender,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
     show_exec_time("send_email_to_eventperson start");

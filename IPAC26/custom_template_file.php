@@ -56,11 +56,17 @@ if ((array_key_exists("code", $req))&&(strlen($req["code"])>0)){
     $content .="<b>This contribution does not yet have a code. Please contact the organizers.</b>\n";
 }
 //var_dump($req);
+$query_affiliations=true;
+for($iperson=0;$iperson<count($req["persons"]);$iperson++){
+    $req["persons"][$iperson]=fix_affiliation($req["persons"][$iperson],$query_affiliations);
+} //fix affiliations for all authors
 $author_block =create_title_author_block($req);
 
 $logfile_handle=fopen($logfile,'a');
 fwrite($logfile_handle,"".date("Y-m-d H:i:s")."; type: ".$type."; id: ".$contribution_id."; code: ".$contribution_code."  \n");
 fclose($logfile_handle);
+
+
 
 if (($type=="latex")||($type=="latex-bib")){
     if ($type=="latex"){

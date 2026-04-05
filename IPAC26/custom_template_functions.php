@@ -86,7 +86,11 @@ function create_title_author_block($req,$indico_link=false){
     }
 
     $contribution_id=$req["id"];
-    if ((array_key_exists($contribution_id, $contribs_qa_data))&&(array_key_exists("title", $contribs_qa_data[$contribution_id]))&&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])){
+    if (
+        (array_key_exists($contribution_id, $contribs_qa_data))
+        &&(array_key_exists("title", $contribs_qa_data[$contribution_id]))
+        &&($contribs_qa_data[$contribution_id]["title"]["sentence_case"]==$req["title"])
+    ){
         $title_upper_case=$contribs_qa_data[$contribution_id]["title"]["upper_case"];
         $title_sentence_case=$contribs_qa_data[$contribution_id]["title"]["sentence_case"];
     } else {
@@ -147,56 +151,45 @@ function create_title_author_block($req,$indico_link=false){
     }
     $all_labs=[];
     foreach($req["persons"] as $person){
+        //affiliations have already been fixed
         $affname="";
         $affcity="";
         $affcountry="";
         $affcountry_code="";
-        //print("Person: ".$person["first_name"]." ".$person["last_name"].", affiliation: ".$person["affiliation"].", email: ".$person["email"].", author type: ".$person["author_type"]."\n");
-        if (!key_exists($person["affiliation"],$all_labs)){
-            //print("New affiliation: ".$person["affiliation"]."\n");
-            $affreq =$Indico->request( "/api/affiliations/?q=".urlencode($person["affiliation"]), 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true ) ); 
-            //print("Affiliation query returned ".count($affreq)." results\n");
-            if (count($affreq)==0){
-                $function_content .="<b>Warning:</b> affiliation ".$person["affiliation"]." not found in the database. Please ensure that all academic affiliations are taken from the Research Organazation Registry (ROR) <A HREF=https://ror.org>https://ror.org</A>. You can update the authors' affiliation please update the contribution title by modifying the $indico_link.<BR/>\n";
-                //var_dump($person["affiliation_link"]);
-                $affname=$person["affiliation"];
-                if ($person["affiliation_link"]){
-                    $affcity=$person["affiliation_link"]["city"];
-                    $affcountry=$person["affiliation_link"]["country_name"];
-                    $affcountry_code=$person["affiliation_link"]["country_code"];
-                }
-            } else {
-                if (count($affreq)>1){
-                    $function_content .="<b>Warning:</b> affiliation ".$person["affiliation"]." leads to multiple entries in the database. Taking the first one<BR/>\n";
-                }
-                $affname=$affreq[0]["name"];
-                $affcity=$affreq[0]["city"];
-                $affcountry=$affreq[0]["country_name"];
-                $affcountry_code=$affreq[0]["country_code"];
+        if (!array_key_exists("affiliation_link",$person)){
+            if (array_key_exists("affiliation",$person)){
+                $person["affiliation_link"]=[];
+                $person["affiliation_link"]["name"]=$person["affiliation"];
             }
-
-
-            if (!key_exists($affname,$all_labs)){
-                $theaff=$affname;
-                $all_labs[$affname]=[];
-                $all_labs[$affname]["authors"]=[];
-                $all_labs[$affname]["city"]=$affcity;
-                $all_labs[$affname]["country"]=$affcountry;
-                $all_labs[$affname]["country_code"]=$affcountry_code;
-            }
-            if (!key_exists($person["affiliation"],$all_labs)){
-                $all_labs[$person["affiliation"]]=[];
-                $all_labs[$person["affiliation"]]["rename"]=$affname;   
-            }             
-            //print ("New affiliation found: ".$person["affiliation"]."\n");
         }
-        if (key_exists("rename",$all_labs[$person["affiliation"]])){
-            $theaff=$all_labs[$person["affiliation"]]["rename"];
+        if (array_key_exists("affiliation_link",$person)){
+            //var_dump($person["affiliation_link"]);
+            if (!key_exists($person["affiliation_link"]["id"],$all_labs)){
+                $affid=$person["affiliation_link"]["id"];
+                if (!key_exists($affid,$all_labs)){
+                    $theaff=$affid;
+                    $all_labs[$affid]=[];
+                    $all_labs[$affid]["authors"]=[];
+                    $all_labs[$affid]["name"]=$person["affiliation_link"]["name"];
+                    $all_labs[$affid]["city"]=$person["affiliation_link"]["city"];
+                    $all_labs[$affid]["country_name"]=$person["affiliation_link"]["country_name"];
+                    $all_labs[$affid]["country_code"]=$person["affiliation_link"]["country_code"];
+                }
+                if (!key_exists($person["affiliation_link"]["id"],$all_labs)){
+                    $all_labs[$person["affiliation_link"]["id"]]=[];
+                    $all_labs[$person["affiliation_link"]["id"]]["rename"]=$affname;   
+                }             
+                //print ("New affiliation found: ".$person["affiliation"]."\n");
+            }
+        } //affiliation link exists
+        if (key_exists("rename",$all_labs[$person["affiliation_link"]["id"]])){
+            $theaff=$all_labs[$person["affiliation_link"]["id"]]["rename"];
         } else {
-            $theaff=$person["affiliation"];
+            $theaff=$person["affiliation_link"]["id"];
         }
         $all_labs[$theaff]["authors_names"][]=$person["last_name"];
         $all_labs[$theaff]["authors"][]=$person;
+        $jaff=1;
     } // foreach person
 
     //var_dump($all_labs);
@@ -214,12 +207,17 @@ function create_title_author_block($req,$indico_link=false){
     $word_primary_emails=[];
 
     //var_dump($all_labs);
+    $footnote_symbols=array("†","‡","♦","♣","♠");
+    $footnote_symbol_index=0;
 
     foreach($all_labs as $lab => $lab_info){
         $primary_found=false;
-        $this_aff_txt="";
-        $this_latex_txt="";
-        $this_word_txt="";
+        $this_primary_aff_txt="";
+        $this_primary_latex_txt="";
+        $this_primary_word_txt="";
+        $this_secondary_aff_txt="";
+        $this_secondary_latex_txt="";
+        $this_secondary_word_txt="";
         $is_primary_aff=false;
         if (!(key_exists("rename",$lab_info))){
             array_multisort($lab_info["authors_names"], SORT_ASC, $lab_info["authors"]);
@@ -241,37 +239,88 @@ function create_title_author_block($req,$indico_link=false){
                     if (!($author["email"])){
                         $function_content .="<b>WARNING:</b> The primary author (".get_initial($author["first_name"],"&nbsp;").$author["last_name"].") does not have an email address. This should not be the case.<BR/>\n";
                         $function_content .="To add the email address of the primary author, please update modify the $indico_link: only the corresponding author and only the corresponding author should appear \"author\". All other contributors should be listed as \"co-author\". <BR/>\n";
-                        $this_aff_txt =get_initial($author["first_name"],"&nbsp;").$author["last_name"].", ".$this_aff_txt;
-                        $this_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"].", ";
-                        $this_word_txt .=get_initial($author["first_name"]," ").$author["last_name"];
+                        $this_primary_aff_txt .=get_initial($author["first_name"],"&nbsp;").$author["last_name"]." ";
+                        $this_primary_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"]."";
+                        $this_primary_word_txt .=get_initial($author["first_name"]," ").$author["last_name"];
                     } else {
-                        $this_aff_txt = get_initial($author["first_name"],"&nbsp;").$author["last_name"]."&nbsp;(";
-                        $this_aff_txt .= substr($author["email"],0,strpos($author["email"],"@")+5)."... ";
-                        $this_aff_txt .= "), ";
-                        $this_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"]."\thanks{".$author["email"]."}, ";
+                        $this_primary_aff_txt .= get_initial($author["first_name"],"&nbsp;").$author["last_name"]."&nbsp;(";
+                        $this_primary_aff_txt .= substr($author["email"],0,strpos($author["email"],"@")+5)."... ";
+                        $this_primary_aff_txt .= ")";
+                        $this_primary_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"]."\thanks{".$author["email"]."}";
                         $word_primary_emails[]=$author["email"];
-                        $this_word_txt .=get_initial($author["first_name"]," ").$author["last_name"].'</w:t><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>';
-                        for($dloop=0;$dloop<count($word_primary_emails);$dloop++){
-                            $this_word_txt .='†';
-                            $word_footnote .='†';
+                        $this_primary_word_txt .=get_initial($author["first_name"]," ").$author["last_name"].'</w:t><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>';
+                        $this_footnote_symbol=$footnote_symbols[$footnote_symbol_index%count($footnote_symbols)];
+                        for($dloop=0;$dloop<intdiv($footnote_symbol_index,count($footnote_symbols))+1;$dloop++){                            
+                            $this_primary_word_txt .=$this_footnote_symbol;
+                            $word_footnote .=$this_footnote_symbol;
                         }
+                        $footnote_symbol_index+=1;
                         $word_footnote .=$author["email"].'</w:t></w:r></w:p><w:p w:rsidR="00A63049" w:rsidRPr="00FA5D95" w:rsidRDefault="00A63049" w:rsidP="00A63049"><w:pPr><w:pStyle w:val="JACoWFootnoteText"/></w:pPr><w:r w:rsidRPr="00FA5D95"><w:t>';
                         $word_footnote_lines+=1;
-                    }
-                    $this_word_txt .='</w:t><w:rPr><w:vertAlign w:val="normal"/></w:rPr><w:t>'.", ";
+                    } //author has email?
                 } else {
-                    $this_aff_txt .=get_initial($author["first_name"],"&nbsp;").$author["last_name"].", ";
-                    $this_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"].", ";
-                    $this_word_txt .=get_initial($author["first_name"]," ").$author["last_name"].", ";
+                    //secondary author
+                    $this_secondary_aff_txt .=get_initial($author["first_name"],"&nbsp;").$author["last_name"];
+                    $this_secondary_latex_txt .=get_initial($author["first_name"],"~").$author["last_name"];
+                    $this_secondary_word_txt .=get_initial($author["first_name"]," ").$author["last_name"];
+                } //primary or secondary?
+                if (array_key_exists("affiliation_link_2",$author)){
+                    $this_multi_aff_txt .= "(also at";
+                    $this_multi_latex_txt .="\\footnote{also at ";
+                    $this_multi_word_txt .='</w:t><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>';
+                    $this_footnote_symbol=$footnote_symbols[$footnote_symbol_index%count($footnote_symbols)];
+                    for($dloop=0;$dloop<intdiv($footnote_symbol_index,count($footnote_symbols))+1;$dloop++){
+                        $this_primary_word_txt .=$this_footnote_symbol;
+                        $word_footnote .=$this_footnote_symbol;
+                    }
+                    $footnote_symbol_index+=1;
+                    $word_footnote .= 'Also at ';
+                    $word_footnote_lines+=1;
+                    $jaff=1;
+                    $link_name="affiliation_link_".($jaff+1);
+                    while(array_key_exists($link_name, $author)){
+                        $this_multi_aff_txt .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $this_multi_latex_txt .=" ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $word_footnote .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $jaff+=1;
+                        $link_name="affiliation_link_".($jaff+1);
+                    }
+                    $this_multi_aff_txt =substr($this_multi_aff_txt,0,-1); // remove last comma
+                    $this_multi_aff_txt .= ")";
+                    $this_multi_latex_txt =substr($this_multi_latex_txt,0,-1); // remove last comma
+                    $this_multi_latex_txt .="}";
+                    $word_footnote =substr($word_footnote,0,-1); // remove last comma
+                    $word_footnote .= '</w:t></w:r></w:p><w:p w:rsidR="00A63049" w:rsidRPr="00FA5D95" w:rsidRDefault="00A63049" w:rsidP="00A63049"><w:pPr><w:pStyle w:val="JACoWFootnoteText"/></w:pPr><w:r w:rsidRPr="00FA5D95"><w:t>';
+                if ($author["author_type"]=="primary"){
+                    $this_primary_aff_txt .= $this_multi_aff_txt;
+                    $this_primary_latex_txt .= $this_multi_latex_txt;
+                    $this_primary_word_txt .= $this_multi_word_txt;
+                } else {
+                    $this_secondary_aff_txt .= $this_multi_aff_txt;
+                    $this_secondary_latex_txt .= $this_multi_latex_txt;
+                    $this_secondary_word_txt .=$this_multi_word_txt;
+                }
+                } // if multiple affiliations, they are added as footnotes in LaTeX and in the text in HTML and Word, but not in the affiliation block
+                if ($author["author_type"]=="primary"){
+                    $this_primary_aff_txt .= ", ";
+                    $this_primary_latex_txt .= ", ";
+                    $this_primary_word_txt .='</w:t><w:rPr><w:vertAlign w:val="normal"/></w:rPr><w:t>'.", ";
+                } else {
+                    $this_secondary_aff_txt .= ", ";
+                    $this_secondary_latex_txt .= ", ";
+                    $this_secondary_word_txt .='</w:t><w:rPr><w:vertAlign w:val="normal"/></w:rPr><w:t>'.", ";
                 }
             } //foreach author
-            $this_aff_txt="<li>".$this_aff_txt;
-            if (!($lab)||(strlen(trim($lab))==0)){
+
+            $this_aff_txt="<li>".$this_primary_aff_txt . $this_secondary_aff_txt;
+            $this_latex_txt=$this_primary_latex_txt . $this_secondary_latex_txt;
+            $this_word_txt=$this_primary_word_txt . $this_secondary_word_txt;
+            if (!($lab)||(!$lab_info)||(!$lab_info["name"])||strlen(trim($lab_info["name"]))==0){
                 $function_content .="<b>WARNING:</b> Affiliation empty for ". $author["first_name"]." ".$author["last_name"]." This should not be the case.<BR/>\n";
             } else {
-                $this_aff_txt .=$lab;
-                $this_latex_txt .= $lab; 
-                $this_word_txt .= $lab;
+                $this_aff_txt .=$lab_info["name"];
+                $this_latex_txt .= $lab_info["name"]; 
+                $this_word_txt .= $lab_info["name"];
                 if (strlen(trim($lab_info["city"]))==0){
                     $function_content .="<b>WARNING:</b> City empty for affiliation ". $lab." This should not be the case.<BR/>\n";
                 } else {
@@ -279,14 +328,15 @@ function create_title_author_block($req,$indico_link=false){
                     $this_latex_txt .=", ".$lab_info["city"];
                     $this_word_txt .=", ".$lab_info["city"];
                 }
-                if (strlen(trim($lab_info["country"]))==0){
+                if (strlen(trim($lab_info["country_name"]))==0){
                     $function_content .="<b>WARNING:</b> Country empty for affiliation ". $lab." This should not be the case.<BR/>\n";
                 } else{
-                    $this_aff_txt .=", ".$lab_info["country"];
-                    $this_latex_txt .=", ".$lab_info["country"];
-                    $this_word_txt .=", ".$lab_info["country"];
+                    $this_aff_txt .=", ".$lab_info["country_name"];
+                    $this_latex_txt .=", ".$lab_info["country_name"];
+                    $this_word_txt .=", ".$lab_info["country_name"];
                 }
             }
+
             $this_aff_txt .="</li>\n";
             $this_latex_txt .="\\\\ \n";
             $this_word_txt .=" <w:br/> ";

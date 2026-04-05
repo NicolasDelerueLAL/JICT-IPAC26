@@ -254,6 +254,13 @@ if (!($contribution_id)){
     $content .="If this is incorrect, please click <A HREF='custom_template_file.php?contribution_id=".$contribution_id."&update_title=1'>here to update the title manually</A>.<BR/>\n";
     $content .="<BR/>\n";
     //var_dump($req);
+
+    $query_affiliations=true;
+    for($iperson=0;$iperson<count($req["persons"]);$iperson++){
+        $req["persons"][$iperson]=fix_affiliation($req["persons"][$iperson],$query_affiliations);
+    } //fix affiliations for all authors
+
+
     $author_block =create_title_author_block($req,$indico_link);
     $content .=$author_block["html"];
 
