@@ -46,6 +46,7 @@ $Indico->load();
 show_exec_time("bf load papers");
 
 $disable_cache=false;
+$reviewers=get_reviewers_for_contribution($queryArray["contribution_id"],recheck_probability_percent:100);
 load_papers($disable_cache);
 show_exec_time("af load papers");
 

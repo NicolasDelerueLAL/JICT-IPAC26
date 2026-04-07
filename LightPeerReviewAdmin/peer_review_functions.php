@@ -665,6 +665,7 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
         } else {
             $reviewers_info[$rev["id"]][$contribution_id]=$rev["action"];
             $reviewers_info[$rev["id"]]["date"][$contribution_id]=$rev["date"];
+            $reviewers_info[$rev["id"]]["reminder"]=[];
             $reviewers_info[$rev["id"]]["reminder"][$contribution_id]=$rev["reminder"];
             //print("Action: ".$rev["action"]."\n");
         }

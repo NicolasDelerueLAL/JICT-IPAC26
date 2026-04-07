@@ -39,8 +39,6 @@ check_lpr_rights();
 $Indico->load();
 
 
-load_papers($disable_cache);
-
 $T =new TMPL( $cfg['template'] );
 $T->set([
     'style' =>'main { font-size: 22px; } main ul { margin: 20px; }',
@@ -56,6 +54,12 @@ $T->set([
     ]);
 
 
+if (!($queryArray["contribution_id"])){
+    die("No contribution ID given... Stop.");
+}
+
+$reviewers=get_reviewers_for_contribution($queryArray["contribution_id"],recheck_probability_percent:100);
+load_papers($disable_cache);
 
 $content ="";
 
@@ -74,9 +78,6 @@ $content .="<A HREF='list_papers.php'>Go to the list of papers</A><BR/><BR/>\n";
 
 $content .="<BR/><BR/>\n";
 
-if (!($queryArray["contribution_id"])){
-    die("No contribution ID given... Stop.");
-}
 
 $action_url="https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 

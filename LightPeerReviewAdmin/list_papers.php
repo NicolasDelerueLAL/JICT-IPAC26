@@ -83,11 +83,24 @@ $js_variables ="
 <script>
 ";
 
+$content .="<A HREF='list_papers.php?recheck_all=1&no_cache=0'>Recheck all papers' reviewer status.</A><BR/>\n";
+$content .="<A HREF='list_papers.php?recheck_all=1&no_cache=1'>Recheck all papers' reviewer status and the cache</A><BR/>\n";
 $content .="<A HREF='list_participants.php'>Go to the list of participants</A><BR/><BR/>\n";
 
 $disable_cache=false;
+$recheck_probability_percent=10; 
 show_exec_time("bf load_paper");
-load_papers($disable_cache);
+if (array_key_exists("recheck_all",$queryArray)){
+    if ($queryArray["recheck_all"]==1){
+        $recheck_probability_percent=100;
+    }
+}
+if (array_key_exists("no_cache",$queryArray)){
+    if ($queryArray["no_cache"]==1){
+    $disable_cache=true;
+    }
+}
+load_papers($disable_cache,recheck_probability_percent:$recheck_probability_percent);
 show_exec_time("af load_paper");
 
 $content .="There are ".count($all_papers)." papers <BR/>\n";
