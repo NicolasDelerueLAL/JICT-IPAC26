@@ -130,7 +130,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                 $reminder=false;
                 $rev_txt="";
                 if (array_key_exists("email",$reviewer)){
-                    $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." ".$reviewer["email"].")";
+                    $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." - ".$reviewer["email"].")";
                 } else {
                     $rev_txt.=ucfirst($reviewer["action"]).": ( ".$reviewer["id"]." ".$reviewer["email"].")";
                 }
@@ -157,9 +157,10 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                     }
                     //print("<!--- rev_txt: ".$rev_txt." -->\n");
                     if (
-                        (($reviewer["action"]=="accepted")&&($days_ago>=$days_for_review))
+                        ((($reviewer["action"]=="accepted")&&($days_ago>=$days_for_review))
                         ||(($reviewer["action"]=="invited")&&($days_ago>=$days_to_accept_invitation))
-                        ||(($reminder)&&($days_ago>=$days_after_reminder))
+                        ||(($reminder)&&($days_ago>=$days_after_reminder)))
+                        &&(!($reviewer["action"]=="reviewed"))
                         )
                         {
                         $rev_txt.="<b style='color:red;'> Overdue: ".$rev_txt."</b> (<A HREF='send_reminder.php?contribution_id=".$paper["contribution_id"]."'>Send a reminder</A>) ";
