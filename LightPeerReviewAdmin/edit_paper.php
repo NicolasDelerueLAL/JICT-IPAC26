@@ -50,7 +50,7 @@ $reviewers=get_reviewers_for_contribution($queryArray["contribution_id"],recheck
 //print("Paper reviewers: \n");
 //var_dump($reviewers);
 
-load_papers($disable_cache);
+load_papers($disable_cache,recheck_probability_percent:2);
 show_exec_time("af load papers");
 
 

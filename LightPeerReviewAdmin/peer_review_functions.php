@@ -116,7 +116,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
         $paper["reviewers"]="";
         $paper["edit_link"]="<A HREF='edit_paper.php?contribution_id=".$paper["contribution_id"]."'>Edit paper</A>";
         $reviewers=get_reviewers_for_contribution($contribution["id"],recheck_probability_percent:$recheck_probability_percent);
-        print("<!---\n"); print("Reviewers for contribution ".$contribution["id"]." \n"); var_dump($reviewers); print(" --->\n");
+        //print("<!---\n"); print("Reviewers for contribution ".$contribution["id"]." \n"); var_dump($reviewers); print(" --->\n");
         $paper["overdue"]="";
         if (($reviewers)&&(count($reviewers)>0)){            
             $paper["n_reviewers"]=count($reviewers);
@@ -139,7 +139,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                     }
                     $rev_txt.=" ago) \n";      
                     if (strlen($reviewer["reminder"])>0){
-                        print("<!--- Reminder: ".$reviewer["reminder"]." -->\n");
+                        //print("<!--- Reminder: ".$reviewer["reminder"]." -->\n");
                         $reminder=true;
                         $rev_txt.="reminded on ";
                         $rev_txt.=substr($reviewer["reminder"],0,10)." (";
@@ -150,7 +150,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                         }
                         $rev_txt.=" ago) \n";      
                     }
-                    print("<!--- rev_txt: ".$rev_txt." -->\n");
+                    //print("<!--- rev_txt: ".$rev_txt." -->\n");
                     if (
                         (($reviewer["action"]=="accepted")&&($days_ago>=$days_for_review))
                         ||(($reviewer["action"]=="invited")&&($days_ago>=$days_to_accept_invitation))
@@ -623,10 +623,7 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
                             );
             //var_dump($retval[count($retval)-1]);
         } else {
-            print("\n<!--- \n");
-            print("other action: $id");
-            var_dump($action);            
-            print("--->\n");
+            //print("\n<!--- \n"); print("other action: $id");var_dump($action);   print("--->\n");
             
             if (!(array_key_exists($id,$reviewers_info))){
                 $reviewers_info[$id]=[];
