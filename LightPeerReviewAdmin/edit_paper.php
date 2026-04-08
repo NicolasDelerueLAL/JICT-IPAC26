@@ -149,10 +149,10 @@ if (($paper["n_reviewers"]>2)&&((!($queryArray["add_extra_reviewer"]))||($queryA
 
 
 $reviewers_info=file_read_json( $cws_config['global']['data_path']."/reviewers_info.json",true);
-print("<!--- ");
-print("Reviewers info:\n");
+//print("<!--- ");
+//print("Reviewers info:\n");
 //var_dump($reviewers_info);
-print(" --->");
+//print(" --->");
 
     //check registered
     $not_registered=0;
@@ -416,9 +416,22 @@ show_exec_time("check track");
 } //List possible extra reviewers
 $T->set( 'content', $content );
 $T->set( 'column_width', $column_width );
+$T->set( 'txt1_txt', "Contribution ID:" );
+$T->set( 'txt1_val', $queryArray["contribution_id"] );
+$T->set( 'txt2_txt', "<small>"."Title:" ."</small>");
+$T->set( 'txt2_val', "<small>".$paper["title"] ."</small>" );
+$T->set( 'txt3_txt', "Possible reviewers:" );
+$T->set( 'txt3_val', $n_possible_reviewers);
+$T->set( 'txt4_txt', "" );
+$T->set( 'txt4_val', "" );
 $T->set( 'txt5_txt', "" );
 $T->set( 'txt5_val', "" );
-
+$T->set( 'txt6_txt', "" );
+$T->set( 'txt6_val', "" );
+$T->set( 'txt7_txt', "" );
+$T->set( 'txt7_val', "" );
+$T->set( 'txt8_txt', "" );
+$T->set( 'txt8_val', "" );
 
 echo $T->get();
 
