@@ -116,10 +116,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
         $paper["reviewers"]="";
         $paper["edit_link"]="<A HREF='edit_paper.php?contribution_id=".$paper["contribution_id"]."'>Edit paper</A>";
         $reviewers=get_reviewers_for_contribution($contribution["id"],recheck_probability_percent:$recheck_probability_percent);
-        //print("<!---\n"); 
-        //print(" reviewers \n"); 
-        //var_dump($reviewers);
-        //print(" --->\n");
+        print("<!---\n"); print("Reviewers for contribution ".$contribution["id"]." \n"); var_dump($reviewers); print(" --->\n");
         $paper["overdue"]="";
         if (($reviewers)&&(count($reviewers)>0)){            
             $paper["n_reviewers"]=count($reviewers);
@@ -133,6 +130,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                     $rev_txt.=ucfirst($reviewer["action"]).": ( ".$reviewer["id"]." ".$reviewer["email"].")";
                 }
                 if ($reviewer["date"]){
+                    //print($reviewer["date"]);
                     $rev_txt.=" on ".substr($reviewer["date"],0,10)." (";
                     $days_ago=round((time()-strtotime($reviewer["date"]))/(60*60*24));
                     $rev_txt.=$days_ago." day";
@@ -141,6 +139,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                     }
                     $rev_txt.=" ago) \n";      
                     if (strlen($reviewer["reminder"])>0){
+                        print("<!--- Reminder: ".$reviewer["reminder"]." -->\n");
                         $reminder=true;
                         $rev_txt.="reminded on ";
                         $rev_txt.=substr($reviewer["reminder"],0,10)." (";
@@ -151,6 +150,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                         }
                         $rev_txt.=" ago) \n";      
                     }
+                    print("<!--- rev_txt: ".$rev_txt." -->\n");
                     if (
                         (($reviewer["action"]=="accepted")&&($days_ago>=$days_for_review))
                         ||(($reviewer["action"]=="invited")&&($days_ago>=$days_to_accept_invitation))
@@ -550,7 +550,8 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
                 $ival+=1;
             }            
         }
-        show_exec_time("get_reviewers_for_contribution end (no recheck)");
+        show_exec_time("get_reviewers_for_contribution end (no recheck)");        
+        //var_dump($retval);
         return $retval;
     } //no recheck
 
@@ -588,16 +589,17 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
             $retval[]=array("id" => $matches[1][$iloop],"name"=>$matches[2][$iloop]);
         }
     }
-    //var_dump($retval);
+    //print("<!--- Reviewers from assignement: \n"); var_dump($retval); print(" --->\n");
+    //print("<!--- Reviewers from history: \n");var_dump($reviewers_from_history); print(" --->\n");
     foreach($reviewers_from_history["allocation"] as $id => $action){
-        if ($action=="accepted"){
+        if (($action=="accepted")||($action=="reviewed")){
             $found=false;
             for ($ival=0;$ival<count($retval);$ival++){
                 //print("".$retval[$ival]["id"]."=?=".$id."? \n");
-                if ($retval[$ival]["id"]=="".$id){
+                if ($retval[$ival]["id"]=="".$id){                    
                     $retval[$ival]["date"]=$reviewers_from_history["allocation_date"][$id];
                     $retval[$ival]["reminder"]=$reviewers_from_history["reminder_date"][$id];
-                    $retval[$ival]["action"]="accepted";
+                    $retval[$ival]["action"]=$action;
                     $retval[$ival]["event_id"]=get_participant("user_id",$id)["id"];
                     $retval[$ival]["name"]=get_participant("user_id",$id)["full_name"];
                     $retval[$ival]["email"]=get_email_from_userid($id);
@@ -607,7 +609,7 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
             if (!$found){
                 print("Warning: reviewer $id has accepted but is not among the reviewers lists for contribution ".$contribution_id."! <BR/>\n");
             }
-        } else if ($action=="invited"){
+        } else if (($action=="invited")){
             //print("get_participant:\n");
             //var_dump(get_participant("user_id",$id)["id"]);            
             //print("\n");
@@ -615,11 +617,17 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
                             "event_id"=>get_participant("user_id",$id)["id"],
                             "name"=>get_full_name_from_userid($id),
                             "email"=>get_email_from_userid($id),
-                            "action"=>"invited", 
+                            "action"=>$action, 
                             "date" => $reviewers_from_history["allocation_date"][$id],
                             "reminder" => $reviewers_from_history["reminder_date"][$id]
                             );
+            //var_dump($retval[count($retval)-1]);
         } else {
+            print("\n<!--- \n");
+            print("other action: $id");
+            var_dump($action);            
+            print("--->\n");
+            
             if (!(array_key_exists($id,$reviewers_info))){
                 $reviewers_info[$id]=[];
                 //print("Creating entry \n");
@@ -647,10 +655,12 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
             }
         }
     }    
+    //print("<!--- Loop on reviewer returned values:\n"); var_dump($retval); print("--->\n");
     foreach($retval as $rev){
+
         //checking reviewer roles
-        //print("<!--- Reviewrs roles: \n");
-        //print("Rev id:".$rev["id"]." \n");
+        //print("<!--- Reviewers roles: \n"); print("Rev id:".$rev["id"]." ".$rev["action"]."\n"); print("--->\n");
+
         if (!(array_key_exists($rev["id"],$reviewers_info))){
             $reviewers_info[$rev["id"]]=[];
             //print("Creating entry \n");
@@ -660,18 +670,20 @@ function get_reviewers_for_contribution($contribution_id,$disable_chache=false,$
         $reviewers_info[$rev["id"]]["email"]=$rev["email"];
 
         if (!(array_key_exists("action",$rev))){
-                print("Warning: reviewer ".$rev["id"]." is among the reviewers lists but not has not accepted in the timeline for contribution ".$contribution_id."! <BR/>\n");
-            $reviewers_info[$rev["id"]][$contribution_id]="In reviewers list";
+                print("Warning: reviewer ".$rev["id"]." is among the reviewers lists but not has not accepted or reviewed in the timeline for contribution ".$contribution_id."! <BR/>\n");
+                $reviewers_info[$rev["id"]][$contribution_id]="In reviewers list";
         } else {
+            //print("Action: ".$rev["action"]."\n");
             $reviewers_info[$rev["id"]][$contribution_id]=$rev["action"];
+            $reviewers_info[$rev["id"]]["date"]=[];
             $reviewers_info[$rev["id"]]["date"][$contribution_id]=$rev["date"];
             $reviewers_info[$rev["id"]]["reminder"]=[];
             $reviewers_info[$rev["id"]]["reminder"][$contribution_id]=$rev["reminder"];
-            //print("Action: ".$rev["action"]."\n");
         }
-        //print("--->\n");
+        //print("<!--- Reviewer ".$rev["id"]." updated:\n"); var_dump($reviewers_info[$rev["id"]]); print("--->\n");
     }
     $fwret=file_write_json(  $cws_config['global']['data_path']."/reviewers_info.json",$reviewers_info);
+    //var_dump($reviewers_info);
     print($fwret?"<!--- Reviewers file saved successfully --->\n":"Error saving reviewers data\n");
     show_exec_time("get_reviewers_for_contribution end (rechecked)");
     return $retval;    
@@ -688,6 +700,7 @@ function get_paper_reviewers_status($contribution_id){
     $reviewers["invited"]=[];
     $reviewers["uninvited"]=[];
     $reviewers["accepted"]=[];
+    $reviewers["reviewed"]=[];
     $reviewers["declined"]=[];
     $reviewers["assigned"]=[];
     $reviewers["unassigned"]=[];
@@ -695,50 +708,75 @@ function get_paper_reviewers_status($contribution_id){
         foreach($revision["timeline"] as $timeitem){
             /*
             print("\n");
+            print("<!--- \n");
             print("timeitem");
             print_r($timeitem);
             print("\n");
             print($timeitem["text"]);
+            print("--->\n");
             print("\n");
-            */            
-            if (array_key_exists("text",$timeitem)){
-                //print("Matches ".$timeitem["text"]." \n");
-                //var_dump($timeitem["text"]);
-                $matches=[];
-                $matchtxt='#([a-zA-Z]+) reviewer ([0-9]+)#';
-                $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
-                if (!$returnValue){
+            */
+            if ($timeitem["timeline_item_type"]=="comment"){                        
+                if (array_key_exists("text",$timeitem)){
+                    //print("Matches ".$timeitem["text"]." \n");
+                    //var_dump($timeitem["text"]);
                     $matches=[];
-                    $matchtxt='#Reviewer ([a-zA-Z]+) ([0-9]+)#';
+                    $matchtxt='#([a-zA-Z]+) reviewer ([0-9]+)#';
                     $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
-                }
-                if ($returnValue){
-                    //var_dump($matches);
-                    $reviewer_id=$matches[2][0];
-                    $action=str_replace("ing","ed",strtolower($matches[1][0]));
-                    //print("Action: $action \n");
-                    $reviewers["allocation"][$reviewer_id]=$action;
-                    $reviewers["allocation_date"][$reviewer_id]=$timeitem["created_dt"];
-                    $reviewers["reminder_date"][$reviewer_id]="";
-                    $reviewers[$action][]=$reviewer_id;
-                    $reviewers[$action]=array_unique($reviewers[$action]);
-                } else {
-                    $matchtxt='#Reminder sent to ([0-9]+)#';
-                    $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
+                    if (!$returnValue){
+                        $matches=[];
+                        $matchtxt='#Reviewer ([a-zA-Z]+) ([0-9]+)#';
+                        $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
+                    }
                     if ($returnValue){
-                        $reviewer_id=$matches[1][0];
-                        $reviewers["reminder_date"][$reviewer_id]=$timeitem["created_dt"];
+                        //var_dump($matches);
+                        $reviewer_id=$matches[2][0];
+                        $action=str_replace("ing","ed",strtolower($matches[1][0]));
+                        //print("Action: $action \n");
+                        $reviewers["allocation"][$reviewer_id]=$action;
+                        $reviewers["allocation_date"][$reviewer_id]=$timeitem["created_dt"];
+                        $reviewers["reminder_date"][$reviewer_id]="";
+                        $reviewers[$action][]=$reviewer_id;
+                        $reviewers[$action]=array_unique($reviewers[$action]);
                     } else {
-                        $matchtxt='#Reason given by ([0-9]+): (decline_[a-z_]+)#';
+                        $matchtxt='#Reminder sent to ([0-9]+)#';
                         $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
                         if ($returnValue){
                             $reviewer_id=$matches[1][0];
-                            $reviewers["decline_reason"][$reviewer_id]=$matches[2][0];
+                            $reviewers["reminder_date"][$reviewer_id]=$timeitem["created_dt"];
+                        } else {
+                            $matchtxt='#Reason given by ([0-9]+): (decline_[a-z_]+)#';
+                            $returnValue = preg_match_all($matchtxt, $timeitem["text"], $matches);
+                            if ($returnValue){
+                                $reviewer_id=$matches[1][0];
+                                $reviewers["decline_reason"][$reviewer_id]=$matches[2][0];
+                            }
                         }
                     }
-                }
-            }       
+                } 
+            }  //timeitem is a comment 
+            else if ($timeitem["timeline_item_type"]=="review"){
+                //print("\n<!--- \n"); print("timeitem (review)"); print_r($timeitem); print("\n"); print($timeitem["text"]); print("--->\n");
+                $reviewer_id=$timeitem["user"]["id"];
+                $action="reviewed";
+                //print("Action: $action \n");
+                $reviewers["allocation"][$reviewer_id]=$action;
+                $reviewers["allocation_date"][$reviewer_id]=$timeitem["created_dt"];
+                $reviewers["reminder_date"][$reviewer_id]="";
+                $reviewers[$action][]=$reviewer_id;
+                $reviewers[$action]=array_unique($reviewers[$action]);
+            }  else {
+                print("\n");
+                print("<!--- \n");
+                print("ignored timeitem");
+                print_r($timeitem);
+                print("\n");
+                print($timeitem["text"]);
+                print("--->\n");
+                print("\n");
+            }
         } //for each timeitem
+
     } //for each revision
     //print("<!--- Reviewers for paper $contribution_id:\n");
     //var_dump($reviewers);    

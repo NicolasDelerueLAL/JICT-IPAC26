@@ -618,8 +618,8 @@ function check_contribution_title_case($contribution_id,$retry=false){
             die("Empty result<BR/>\n");
         } else {
             print("Answer:<BR/>\n");
-            print($result);
-            print("<BR/>\n");
+            //print($result);
+            //print("<BR/>\n");
             $results=explode("\n",$result);
             $answer_array=array('sentence case','title case','neither');
             if ((count($results)==1)&&(in_array($result,$answer_array))){
@@ -645,7 +645,12 @@ function check_contribution_title_case($contribution_id,$retry=false){
             }
         }
         print("<BR/>\n");
-        $question='This is the title of a scientific publication: '.$req["title"].'. I will want to convert it into sentence case and uppercase. Could you return an array with all the words it contains whose first letter should always be capitalized (such as proper nouns,...), on a second line an array with all the words it contains whose case should never be changed (acronyms, units,...) and a third line with an array of all other words whose case should be adapted to the context? Please answer with the following format: Proper nouns: [list of nouns separated by semicolons];\n NoCaseChange: [list of other words separated by semicolons]\nNoCaseChange: [list of words whose case should not be changed separated by semicolons]\nOtherWords: [list of other words separated by semicolons].';
+        //$question='This is the title of a scientific publication: '.$req["title"].'. I will want to convert it into sentence case and upper case. Could you return an array with all the words it contains whose first letter should always be capitalized (such as proper nouns) and on a second line an array with all the words it contains whose case should never be changed (acronyms, units,...) and a third line with an array of all other words whose case should be adapted to the context? Please answer with the following format: Proper nouns: [list of nouns separated by semicolons];\n NoCaseChange: [list of other words separated by semicolons]\nNoCaseChange: [list of words whose case should not be changed separated by semicolons]\nOtherWords: [list of other words separated by semicolons].';
+        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you return an array with all the proper nouns it contains as well as other words whose first letter should always be capitalized? Please answer with the following format: Proper nouns: [list of nouns separated by semicolons];\n';
+        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you rewrite this title in sentence case?\n';
+        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you rewrite this title in upper case?\n';
+        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any proper nouns? If yes, please answer with a list of these proper nouns separated by semicolons, on the first line of your answer.\n';
+        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any units or acronyms? If yes, please answer with a list of these proper nouns separated by semicolons, on the first line of your answer.\n';
         print("Question to AI:<BR/>\n");
         print($question);
         print("<BR/>\n");
