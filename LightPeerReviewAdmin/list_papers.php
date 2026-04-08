@@ -191,17 +191,23 @@ $content .="<BR/>";
 $T->set( 'content', $content );
 $T->set( 'column_width', $column_width );
 
-$T->set( 'txt1_txt', "Papers" );
+global $overdue_papers,$reviewed_papers,$accepted_papers,$rejected_papers;
+$T->set( 'txt1_txt', "Papers:" );
 $T->set( 'txt1_val', count($all_papers) );
-$T->set( 'txt2_txt', "" );
-$T->set( 'txt2_val', "" );
-$T->set( 'txt3_txt', "" );
-$T->set( 'txt3_val', "" );
-$T->set( 'txt4_txt', "" );
-$T->set( 'txt4_val', "" );
-$T->set( 'txt5_txt', "" );
-$T->set( 'txt5_val', "" );
-
+$T->set( 'txt2_txt', "Papers shown:" );
+$T->set( 'txt2_val', $papers_shown );
+$T->set( 'txt3_txt', "Overdue" );
+$T->set( 'txt3_val', $overdue_papers );
+$T->set( 'txt4_txt', "Reviewed:" );
+$T->set( 'txt4_val', $reviewed_papers );
+$T->set( 'txt5_txt', "Accepted:" );
+$T->set( 'txt5_val', $accepted_papers );
+$T->set( 'txt6_txt', "Rejected:" );
+$T->set( 'txt6_val', $rejected_papers );
+$T->set( 'txt7_txt', "" );
+$T->set( 'txt7_val', "" );
+$T->set( 'txt8_txt', "" );
+$T->set( 'txt8_val', "" );
 
 //$T->set( 'papers', json_decode($req_papers,true)['papers'] );
 //$T->set( 'abstracts', count($abstracts) );

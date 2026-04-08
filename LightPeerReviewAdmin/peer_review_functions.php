@@ -27,6 +27,7 @@ function format_time($time){
 function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_probability_percent=10){
     global $Indico;
     global $all_papers;
+    global $overdue_papers,$reviewed_papers,$accepted_papers,$rejected_papers;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
     global $abstracts,$all_abstracts;
     global $cfg;
@@ -65,6 +66,10 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
         die("Unable to decode req_papers ");
     }
     show_exec_time("load_paper bf loop");
+    $overdue_papers=0;
+    $reviewed_papers=0;
+    $accepted_papers=0;
+    $rejected_papers=0;
 
     for($ploop=0;$ploop<count($all_papers);$ploop++){
         show_exec_time("load_paper loop $ploop");
@@ -159,6 +164,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                         {
                         $rev_txt.="<b style='color:red;'> Overdue: ".$rev_txt."</b> (<A HREF='send_reminder.php?contribution_id=".$paper["contribution_id"]."'>Send a reminder</A>) ";
                         $paper["overdue"].=$rev_txt;
+                        $overdue_papers+=1;
                     } 
                     $rev_txt.="(<A HREF='../LightPeerReview/paper_acceptance?contribution_id=".$paper["contribution_id"]."&force_user_by_email=".$reviewer["email"]."'>Manual action</A>)";
                 }
@@ -197,6 +203,7 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                     $latest_comment.=count($latest_rev["reviews"])." reviews<BR/>\n";
                     $paper["latest_comment"].=count($latest_rev["reviews"])." reviews<BR/>\n";
                     $paper["overdue"].="Check reviews";
+                    $reviewed_papers++;
                 }
                 foreach($latest_rev["reviews"] as $review){
                     $latest_comment.=$review["proposed_action"]["name"]." <BR/>\n";
