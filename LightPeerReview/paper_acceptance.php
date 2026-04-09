@@ -84,10 +84,14 @@ if ($queryArray["force_user_by_email"]){
 }
 
 print("<!--- ");
-print("\nThis person user_id : ".$this_person["user_id"]."\n\n");
+print("\nThis person user_id : ".$this_person["user_id"]);
 print("\n--->\n");
 
 $paper_reviewer=get_paper_reviewers_status($queryArray["contribution_id"]);
+
+if (!($paper_reviewer)){
+    die("Unable to get paper reviewers status for contribution ".$queryArray["contribution_id"].". This contribution may have been withdrawn.");
+}
 
 if (!(in_array($this_person["user_id"],$paper_reviewer["invited"]))){
     if ((in_array($this_person["user_id"],$paper_reviewer["uninvited"]))){
@@ -97,7 +101,7 @@ if (!(in_array($this_person["user_id"],$paper_reviewer["invited"]))){
     } if ((in_array($this_person["user_id"],$paper_reviewer["declined"]))){
         die("The invitation we sent you has been declined");
     } else {
-        die("Sorry you ".$this_person["full_name"]." - ".$this_person["email"]." (".$this_person["user_id"].") have not been invited to review this paper");
+        die("Sorry, you (logged as  ".$this_person["full_name"]." - ".$this_person["email"]." - id:".$this_person["user_id"].") have not been invited to review this paper");
     }
 }
 

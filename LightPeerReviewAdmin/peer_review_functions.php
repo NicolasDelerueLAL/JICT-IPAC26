@@ -130,9 +130,9 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                 $reminder=false;
                 $rev_txt="";
                 if (array_key_exists("email",$reviewer)){
-                    $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." - ".$reviewer["email"].")";
+                    $rev_txt.=ucfirst($reviewer["action"]).": ".$reviewer["name"]." ( ".$reviewer["id"]." - ".$reviewer["email"]." )";
                 } else {
-                    $rev_txt.=ucfirst($reviewer["action"]).": ( ".$reviewer["id"]." ".$reviewer["email"].")";
+                    $rev_txt.=ucfirst($reviewer["action"]).": ( ".$reviewer["id"]." ".$reviewer["email"]." )";
                 }
                 if ($reviewer["date"]){
                     //print($reviewer["date"]);
@@ -698,6 +698,10 @@ function get_paper_reviewers_status($contribution_id){
     //print("<!--- get_paper_reviewers_status $contribution_id --->\n");
     show_exec_time("get_paper_reviewers_status start");
     $paper=get_paper($contribution_id,use_session_token:false);
+    if (!$paper){
+        print("<!--- Unable to get paper for contribution $contribution_id --->\n");
+        return false;
+    }
     //print("Timeline <BR/>\n");
     $reviewers=[];
     $reviewers["allocation"]=[];
