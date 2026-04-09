@@ -71,6 +71,9 @@ $content="";
 //print("user\n");
 //var_dump($user);
 $this_person=get_person($user);
+if (!($this_person)){
+    die("Sorry, we were not able to retrieve your information. Did you use the correct email address (".$user["email"].") as login credentials? Please contact the conference organizers to solve this issue.");
+}
 
 if ($queryArray["force_user_by_email"]){
     check_lpr_rights();
