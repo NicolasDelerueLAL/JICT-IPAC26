@@ -164,6 +164,8 @@ if (!($contribution_id)){
     var_dump($user);
     */    
     foreach($req["persons"] as $author){
+        //print("<!--- \n"); print("Author name: ".$author["first_name"]." ".$author["last_name"]."<BR/>\n"); print("Author email: ".$author["email"]."<BR/>\n"); var_dump($author); print("---> \n");
+
         if ((array_key_exists("email", $author))&&($author["email"]==$_SESSION['indico_oauth']["user"]["email"])){
             $allowed=true;
             break;
@@ -290,7 +292,10 @@ if (!($contribution_id)){
     $content .="<td>";
     $content .="<A HREF='custom_template_file.php?contribution_id=".$contribution_id."&type=word'>MS Wordfile</A><BR/>\n";    
     $content .="</td>";
-    $content .="<tr><td colspan=2>Note:<i> If your LaTeX install is more than a few years old, you may be using an old version of <tt>siunitx</tt>. In this case you will need to add the following command after <tt>\begin{document}</tt>:</i><BR/><tt>\ifdefined\qty  \\else \\newcommand{\qty}{\SI} \\fi</tt></td><td></td></tr>\n";
+    $content .="<tr><td colspan=2>Notes:\n";
+    $content .="<ul><li>The templates have been tested with: <b>LuaHBTeX, Version 1.24.0 (MiKTeX 26.2 Portable) Development id: 7724</b></li>";
+    $content .="<li><i> If your LaTeX install is more than a few years old, you may be using an old version of <tt>siunitx</tt>. In this case you will need to add the following command after <tt>\begin{document}</tt>:</i><BR/><tt>\ifdefined\qty  \\else \\newcommand{\qty}{\SI} \\fi</tt>";
+    $content .="</li></ul></td><td></td></tr>\n";
     $content .="</tr>";
     
     /*
