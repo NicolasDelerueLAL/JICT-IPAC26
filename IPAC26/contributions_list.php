@@ -42,7 +42,7 @@ if (empty(array_intersect( $allowed_roles, $_SESSION['indico_oauth']['user']['ro
 load_contributions(disable_contributions_cache: false);
 
 foreach($contributions as $contribution){
-    print("Contribution ID: <A HREF='https://indico.jacow.org/event/95/contributions/".$contribution["id"]."'/>".$contribution["id"]."</A>;");
+    print("Contribution ID: <A HREF='https://indico.jacow.org/event/95/contributions/".$contribution["id"]."/'>".$contribution["id"]."</A> ;  <A HREF='edit_contribution.php?contrib_id=".$contribution["id"]."'>(edit)</A>;  <A HREF='https://indico.jacow.org/event/95/contributions/".$contribution["id"]."/editing/paper'>(proceedings)</A>; <A HREF='https://indico.jacow.org/event/95/papers/".$contribution["id"]."/'>(LPR)</A>;");
     print(" Friendly ID: #".$contribution["friendly_id"]."; ");
     if (strlen($contribution["code"])>0){
         print(" contribution code: ".$contribution["code"]."; ");

@@ -30,40 +30,67 @@ class AI_REQUEST {
     //print("Query: ".$question."<BR/>\n");
     $apiKey = $cws_config['global']['mistral_key']; // Replace with your actual API key
     $apiUrl = 'https://api.mistral.ai/v1/chat/completions';
-
+    /*
     $data = [
         'model' => 'mistral-small-latest',
         'messages' => [
             ['role' => 'user', 'content' => $question]
         ],
     ];
+    */
+    $data = [
+        'model' => 'mistral-large-latest',
+        'messages' => [
+            ['role' => 'user', 'content' => $question]
+        ],
+    ];
 
-    $ch = curl_init($apiUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $apiKey,
-    ]);
+    $itry=0;
+    $maxtry=5;
+    while($itry<$maxtry){
+        $itry++;
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey,
+        ]);
 
-    $result = curl_exec($ch);
-    if (curl_errno($ch)) {
-        echo 'Curl error: ' . curl_error($ch);
-    } else {
-        print($result);
-        print("<BR/>");
-        $response = json_decode($result, true);
-        if (isset($response['error'])) {
-            echo "API Error: " . $response['error']['message'];
-            return false;
+        $result = curl_exec($ch);
+        if (curl_errno($ch)) {
+            echo 'Curl error: ' . curl_error($ch);
         } else {
-            print_r($response);
-            //echo $response['choices'][0]['message']['content'];
-            return $response['choices'][0]['message']['content'];
+            //print($result);
+            //print("<BR/>");
+            $response = json_decode($result, true);
+            if (isset($response['error'])) {
+                echo "API Error: " . $response['error']['message'];
+            } else if (isset($response['object']) && $response['object'] === 'error') {
+                if ($response["type"]=="service_tier_capacity_exceeded"){
+                    echo "Service tier capacity exceeded.<BR/>\n";
+                    $time_sleep=5;
+                    print("<!--- Sleeping for $time_sleep seconds<BR/> --->\n");
+                    sleep($time_sleep);
+                } else{
+                    echo "Error: " ;
+                    var_dump($response);
+                }
+            } else {
+                print("<!--- AI response: ");            
+                var_dump($response);
+                print(" --->\n");
+                //echo $response['choices'][0]['message']['content'];
+                curl_close($ch);
+                return $response['choices'][0]['message']['content'];
+            }
         }
-    }
-    curl_close($ch);
+        curl_close($ch);
+        $time_sleep=1;
+        print("<!--- Sleeping for $time_sleep seconds before retrying... (try $itry/$maxtry)<BR/> --->\n");
+        sleep($time_sleep);
+    } //while trying< 5
   } //query ai
 } //class AI
 
@@ -84,7 +111,7 @@ function remove_editor_from_contact_info(){
 
 function load_abstracts($disable_cache=false){
     global $Indico;
-    global $abstracts,$all_abstracts;
+    global $abstracts,$all_abstracts,$abstracts_by_fr_id;
     show_exec_time("load_abstracts start disable_cache $disable_cache");
     //$_rqst_cfg=[];
     //$_rqst_cfg['disable_cache'] =$disable_cache;
@@ -106,8 +133,10 @@ function load_abstracts($disable_cache=false){
         die("Unable to decode req_abstracts ");
     }
     show_exec_time("load_abstracts bf loop");
+    $abstracts_by_fr_id=[];
     foreach($all_abstracts as $abstract){
         $abstracts[$abstract["id"]]=$abstract;
+        $abstracts_by_fr_id[$abstract["friendly_id"]]=$abstract["id"];
     }
     show_exec_time("load_abstracts_end");
 }//load_abstracts
@@ -203,6 +232,34 @@ function load_contributions($disable_contributions_cache=false,$query_affiliatio
     }
     show_exec_time("load_contributions_end");
 }// load_contributions
+
+function contributions_by_emails(){
+    global $contributions;
+    global $contributions_by_speaker_emails;
+    $contributions_by_speaker_emails=[];
+    foreach($contributions as $contribution){
+        /*
+        print("Contribution ID: ".$contribution["id"]." - ".$contribution["title"]."<BR/>\n");
+        if ($contribution["id"]==14565){
+            var_dump($contribution);
+            print("<BR/>\n");
+            var_dump($contribution["persons"]);
+            print("<BR/>\n");
+            die("stop");
+        }
+            */
+        for ($ipers=0;$ipers<count($contribution["persons"]);$ipers++){
+            $person=$contribution["persons"][$ipers];
+            if ($person["is_speaker"]==true){
+                if (!(array_key_exists($person["email"],$contributions_by_speaker_emails))){
+                    $contributions_by_speaker_emails[$person["email"]]=[];
+                }
+                $contributions_by_speaker_emails[$person["email"]][]=$contribution["id"];
+            }
+        } //for each person
+    } //for each contribution
+    //var_dump($contributions_by_speaker_emails);
+} // contributions_by_emails
 
 
 function fix_affiliation($person,$query_affiliations=true){  
@@ -605,7 +662,7 @@ function check_contribution_title_case($contribution_id,$retry=false){
         $contribs_qa_data[$contribution_id]["title"]["sentence_case"]="";
         $contribs_qa_data[$contribution_id]["title"]["upper_case"]="";
         $ai =new AI_REQUEST();
-        $question='This is the title of a scientific publication: '.$req["title"].'. Is this title in title case, in sentence case or neither? Please answer by saying title case, sentence case or neither.';
+        $question='This is the title of a scientific publication: "'.$req["title"].'". Is this title written in title case, in sentence case or neither? Please answer by saying title case, sentence case or neither.';
         print("Question to AI:<BR/>\n");
         print($question);
         print("<BR/>\n");
@@ -617,7 +674,7 @@ function check_contribution_title_case($contribution_id,$retry=false){
         } else if (strlen($result)==0){
             die("Empty result<BR/>\n");
         } else {
-            print("Answer:<BR/>\n");
+            //print("<BR/>\nAnswer:<BR/>\n");
             //print($result);
             //print("<BR/>\n");
             $results=explode("\n",$result);
@@ -643,14 +700,10 @@ function check_contribution_title_case($contribution_id,$retry=false){
                     die("<BR/>\nUnable to understand result");
                 }
             }
+            print("Answer understood: ".$contribs_qa_data[$contribution_id]["title"]["case"]."<BR/>\n");
         }
         print("<BR/>\n");
-        //$question='This is the title of a scientific publication: '.$req["title"].'. I will want to convert it into sentence case and upper case. Could you return an array with all the words it contains whose first letter should always be capitalized (such as proper nouns) and on a second line an array with all the words it contains whose case should never be changed (acronyms, units,...) and a third line with an array of all other words whose case should be adapted to the context? Please answer with the following format: Proper nouns: [list of nouns separated by semicolons];\n NoCaseChange: [list of other words separated by semicolons]\nNoCaseChange: [list of words whose case should not be changed separated by semicolons]\nOtherWords: [list of other words separated by semicolons].';
-        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you return an array with all the proper nouns it contains as well as other words whose first letter should always be capitalized? Please answer with the following format: Proper nouns: [list of nouns separated by semicolons];\n';
-        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you rewrite this title in sentence case?\n';
-        //$question='This is the title of a scientific publication: "'.$req["title"].'". Could you rewrite this title in upper case?\n';
-        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any proper nouns? If yes, please answer with a list of these proper nouns separated by semicolons, on the first line of your answer.\n';
-        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any units or acronyms? If yes, please answer with a list of these proper nouns separated by semicolons, on the first line of your answer.\n';
+        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any proper nouns? Please answer by "Yes" or "No" on the first line and if yes, please answer with a list of these proper nouns separated by semicolons on the second line of your answer. Thank you in advance!';
         print("Question to AI:<BR/>\n");
         print($question);
         print("<BR/>\n");
@@ -661,55 +714,102 @@ function check_contribution_title_case($contribution_id,$retry=false){
         } else if (strlen($result)==0){
             print("Empty result<BR/>\n");
         } else {
-            print($result);
+            //print("<BR/>\nAnswer:<BR/>\n");
+            //print($result);
             $results=explode("\n",$result);
-            if (count($results)>=3){
-                foreach($results as $line){
-                    print("Line: ".$line."<BR/>\n");
-                    if (str_starts_with(trim($line),"Proper nouns:")){
-                        print("Proper nouns line found<BR/>\n");
-                        $contribs_qa_data[$contribution_id]["title"]["proper_nouns"]=trim(str_replace("Proper nouns:","",$line));
-                    } else if (str_starts_with($line,"NoCaseChange:")){
-                        print("No case change line found<BR/>\n");
-                        $contribs_qa_data[$contribution_id]["title"]["no_case_change"]=trim(str_replace("NoCaseChange:","",$line));
-                    } else if (str_starts_with($line,"OtherWords:")){
-                        print("Other words line found<BR/>\n");
-                        $contribs_qa_data[$contribution_id]["title"]["other_words"]=trim(str_replace("OtherWords:","",$line));
-                    } else {
-                        print("Line ignored:<BR/>\n".$line."<BR/>\n");
-                    }
-                }
-            } else {
+            $first_line=trim(strtolower($results[0]));
+            //print("First line of answer: ".$first_line."<BR/>\n");
+            $answer_array=array('yes','no');
+            if (!(in_array($first_line,$answer_array))){
                 print("Result can not be understood:<BR/>\n");
-                print($result);
-                die("<BR/>\nUnable to understand result");
+                var_dump($results);
+                die("Result can not be understood:<BR/>\n");
+            } else {
+                if (str_contains($first_line,"yes")){
+                    $second_line=trim(strtolower($results[1]));
+                    if (strlen($second_line)==0){
+                        $second_line=trim(strtolower($results[2]));
+                    }
+                    print("Second line of answer: ".$second_line."<BR/>\n");
+                    //print("Proper nouns found<BR/>\n");
+                    $nouns_list=explode(";",$second_line);
+                    $contribs_qa_data[$contribution_id]["title"]["proper_nouns"]=[];
+                    foreach($nouns_list as $word){
+                        print($word."<BR/>\n");
+                        $answer_array=explode(" ",trim($word));
+                        foreach($answer_array as $answer){
+                            $contribs_qa_data[$contribution_id]["title"]["proper_nouns"][]=trim($answer);
+                        }
+                    }
+                } else if (str_contains($first_line,"no")){
+                    //print("No proper noun found<BR/>\n");
+                    $contribs_qa_data[$contribution_id]["title"]["proper_nouns"]=[];
+                } else {
+                    print("Result can not be understood:<BR/>\n");
+                    var_dump($results);
+                    die("Result can not be understood:<BR/>\n");
+                }
             }
+            print("Proper nouns: \n");
+            var_dump($contribs_qa_data[$contribution_id]["title"]["proper_nouns"]);
+        }
+        //$question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any proper nouns? Please answer by "Yes" or "No" on the first line and if yes, please answer with a list of these proper nouns separated by semicolons on the second line of your answer. Thank you in advance!\n';
+        $question='This is the title of a scientific publication: "'.$req["title"].'". Does it contain any units or acronyms? Please answer by "Yes" or "No" on the first line and if yes, please answer with a list of these aconyms or units separated separated by semicolons on the second line of your answer. Thank you in advance!';
+        print("Question to AI:<BR/>\n");
+        print($question);
+        print("<BR/>\n");
+        $result=false;
+        $result=$ai->query($question);
+        if (!($result)){
+            print("No result<BR/>\n");
+        } else if (strlen($result)==0){
+            print("Empty result<BR/>\n");
+        } else {
+            //print("<BR/>\nAnswer:<BR/>\n");
+            //print($result);
+            $results=explode("\n",$result);
+            $first_line=trim(strtolower($results[0]));
+            print("First line of answer: ".$first_line."<BR/>\n");
+            $answer_array=array('yes','no');
+            if (!(in_array($first_line,$answer_array))){
+                print("Result can not be understood:<BR/>\n");
+                var_dump($results);
+                die("Result can not be understood:<BR/>\n");
+            } else {
+                if (str_contains($first_line,"yes")){
+                    $second_line=trim($results[1]);
+                    if (strlen($second_line)==0){
+                        $second_line=trim($results[2]);
+                    }
+                    //print("Units or acronyms found<BR/>\n");
+                    $contribs_qa_data[$contribution_id]["title"]["no_case_change"]=explode(";",$second_line);
+                } else if (str_contains($first_line,"no")){
+                    print("No units or acronyms found<BR/>\n");
+                    $contribs_qa_data[$contribution_id]["title"]["no_case_change"]=[];
+                } else {
+                    print("Result can not be understood:<BR/>\n");
+                    var_dump($results);
+                    die("Result can not be understood:<BR/>\n");
+                }
+            }
+            print("Units or acronyms: <BR/>\n");
+            var_dump($contribs_qa_data[$contribution_id]["title"]["no_case_change"]);
+            print("<BR/>\n");
+            print("<BR/>\n");
         }
         //rewrite the title in sentence case and uppercase using the arrays provided by the AI
         //first put the title in lowercase and then uppercase the first letter of each word that is either in the proper nouns list or in the no case change list, and put all the other words in lowercase for sentence case and uppercase for uppercase
         $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=strtolower($req["title"]);
         $contribs_qa_data[$contribution_id]["title"]["upper_case"]=strtoupper($req["title"]);
-        $proper_nouns=str_replace("]","",str_replace("[","",$contribs_qa_data[$contribution_id]["title"]["proper_nouns"]));
-        foreach(explode(";", $proper_nouns) as $word){
-            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word),ucfirst(strtolower($word)),$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
-        }
-        $noCaseChange=str_replace("]","",str_replace("[","",$contribs_qa_data[$contribution_id]["title"]["no_case_change"]));
-        print("Sentence case with nouns: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
-        foreach(explode(";",$noCaseChange) as $word){
-            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word),$word,$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
-            $contribs_qa_data[$contribution_id]["title"]["upper_case"]=str_replace(strtoupper($word),$word,$contribs_qa_data[$contribution_id]["title"]["upper_case"]);
-        }
-        $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=ucfirst($contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
-        print("Rewritten titles<BR/>\n");
-        print("Sentence case: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
-        print("Upper case: ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n");
-
+        $contribs_qa_data[$contribution_id]["title"]["old"]=$req["title"];
+        update_titles_of_contributions_in_qa($contribution_id);
+        
         flush();
         $contribs_qa_data[$contribution_id]["title"]["date"]=time();
         $contribs_qa_data[$contribution_id]["title"]["fixed"]=true;
         //var_dump($contribs_qa_data[$contribution_id]);
         $fwret=file_write_json(  $cws_config['global']['data_path']."/contribs_qa.json",$contribs_qa_data);
-        print($fwret?"Data saved successfully<BR/>\n":"Error saving data<BR/>\n");
+        print($fwret?"<!--- Data saved successfully --->\n":"<!--- Error saving data --->\n");
     } // title case not yet determined
 
     print("<HR/>\n");
@@ -720,10 +820,41 @@ function check_contribution_title_case($contribution_id,$retry=false){
     print("</TABLE>\n");
     if (($contribs_qa_data[$contribution_id]["title"]["old"]!=$contribs_qa_data[$contribution_id]["title"]["sentence_case"])){
         print("<A HREF='fix_title_and_notify.php?contribution_id=".$contribution_id."'>Fix title and notify</A><BR>\n");
+        print("<A HREF='fix_title_and_notify.php?contribution_id=".$contribution_id."&no_notification'>Fix title but do not notify</A><BR>\n");
     }
     print("<A HREF='fix_contribution_title_case.php?contribution_id=".$contribution_id."&retry=1'>Retry for this contribution</A><BR>\n");
     print("<A HREF='fix_contribution_title_case.php?contribution_id=".$contribution_id."&manual=1'>Fix manually</A><BR>\n");
 } // function check_contribution_title_case($contribution_id){
+
+
+function update_titles_of_contributions_in_qa($contribution_id){
+    global $contribs_qa_data;
+        print("Initial titles<BR/>\n");
+        print("Sentence case: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
+        print("Upper case: ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n");
+        print("Proper nouns: \n");
+        var_dump($contribs_qa_data[$contribution_id]["title"]["proper_nouns"]);
+        print("<BR/>\n");
+        foreach($contribs_qa_data[$contribution_id]["title"]["proper_nouns"] as $word){
+            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word),ucfirst(strtolower($word)),$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+        }
+        print("Sentence case with nouns: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
+        print("no_case_change: \n");
+        var_dump($contribs_qa_data[$contribution_id]["title"]["no_case_change"]);
+        print("<BR/>\n");
+        foreach($contribs_qa_data[$contribution_id]["title"]["no_case_change"] as $word){
+            print("Word with no case change: ".$word." ".strtolower($word)."<BR/>\n");
+            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word),$word,$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+            $contribs_qa_data[$contribution_id]["title"]["upper_case"]=str_replace(strtoupper($word),$word,$contribs_qa_data[$contribution_id]["title"]["upper_case"]);
+            print("Sentence case with no case change: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
+        }
+        $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=ucfirst($contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+        print("Rewritten titles<BR/>\n");
+        print("Sentence case: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
+        print("Upper case: ".$contribs_qa_data[$contribution_id]["title"]["upper_case"]."<BR/>\n");
+
+    return;
+} //function update_titles_of_contributions_in_qa
 
 function update_contribution_title($contribution_id,$new_title){
     global $Indico, $contribs_qa_data, $cws_config;
@@ -823,7 +954,7 @@ function assign_contribution_code($contribution_id,$code){
 } //function assign_contribution_code($contribution_id,$code)
 
 function update_contribution_field($contribution_id,$update_field,$update_value){
-    global $Indico, $contribs_qa_data, $cws_config;
+    global $Indico;
     $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
 
     $matches=[];
@@ -833,6 +964,7 @@ function update_contribution_field($contribution_id,$update_field,$update_value)
     $Indico->api->config('header_content_type', 'application/json');
     $post_data = [];
     $post_data["person_link_data"]=$person_link_data;
+    //print("person_link_data <BR/>\n"); var_dump($person_link_data);
     $values=[  "title", "description" ];
     foreach($values as $value) {
         if (isset($req_json[$value])) {
@@ -864,6 +996,92 @@ function update_contribution_field($contribution_id,$update_field,$update_value)
         return $ret;
     }
 } //function update_contribution_field
+
+
+function add_editor_to_contribution($contribution_id){
+    global $Indico;
+    print("<!--- Adding editor to contributors --->");
+    $editor_string='{"address":"15 rue Georges Cl\u00e9menceau\nF-91405 Orsay France","affiliation":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","affiliation_id":31,"affiliation_meta":{"alt_names":[],"city":"Orsay","country_code":"FR","country_name":"France","id":31,"meta":{},"name":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","postcode":"91405","street":"15 rue Georges Cl\u00e9menceau"},"avatar_url":"/user/877/picture-default/ODc3.YIBnEacSi83clYa8qS5YmP3kKTE","display_order":0,"email":"delerue@lal.in2p3.fr","first_name":"Nicolas","jacow_affiliations_ids":[31],"jacow_affiliations_meta":[{"alt_names":[],"city":"Orsay","country_code":"FR","country_name":"France","id":31,"meta":{},"name":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","postcode":"91405","street":"15 rue Georges Cl\u00e9menceau"}],"last_name":"Delerue","name":"Nicolas Delerue","person_id":20881,"phone":"","roles":["secondary","submitter"],"title":null,"type":"person_link","user_id":877,"user_identifier":"User:877:ODc3.dvGyVQuRyvRgGjoAvoGKLHLg5u0"}';
+    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+
+    $matches=[];
+    $matchtxt='/name="person_link_data" value="(.*)">/';
+    $returnValue = preg_match_all($matchtxt, $req_html["html"], $matches);
+    $person_link_data=html_entity_decode($matches[1][0]);
+    $Indico->api->config('header_content_type', 'application/json');
+    $original_person_data=$person_link_data;
+    //print("person_link_data <BR/>\n"); var_dump($person_link_data);
+    $person_link_data="[".$editor_string.",".substr($person_link_data,1);
+    $post_data = [];
+    $post_data["person_link_data"]=$person_link_data;
+    $ret=[];
+    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+    if (is_array($req)){
+        if (array_key_exists("success",$req)){
+            $ret["content"]="Contribution updated successfully<BR/>\n";
+            $ret["original"]=$original_person_data;
+            $ret["value"]=true;
+            return $ret;
+        } else {
+            print("Error updating contribution<BR/>\n");
+            //var_dump($req);
+            //die("Error");
+            $ret["content"]="Error updating contribution<BR/>\n";
+            $ret["value"]=false;
+            return $ret;
+        }
+    } else {
+        print("Error updating contribution<BR/>\n");
+        //var_dump($req);
+        //die("Error");
+        $ret["content"]="Error updating contribution<BR/>\n";
+        $ret["value"]=false;
+        return $ret;
+    }
+} //function add_editor_to_contribution
+
+function remove_editor_from_contribution($contribution_id){
+    global $Indico;
+    print("<!--- Removing editor from contributors --->");
+    $editor_string='{"address":"15 rue Georges Cl\u00e9menceau\nF-91405 Orsay France","affiliation":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","affiliation_id":31,"affiliation_meta":{"alt_names":[],"city":"Orsay","country_code":"FR","country_name":"France","id":31,"meta":{},"name":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","postcode":"91405","street":"15 rue Georges Cl\u00e9menceau"},"avatar_url":"/user/877/picture-default/ODc3.YIBnEacSi83clYa8qS5YmP3kKTE","display_order":0,"email":"delerue@lal.in2p3.fr","first_name":"Nicolas","jacow_affiliations_ids":[31],"jacow_affiliations_meta":[{"alt_names":[],"city":"Orsay","country_code":"FR","country_name":"France","id":31,"meta":{},"name":"Universit\u00e9 Paris-Saclay, CNRS/IN2P3, IJCLab","postcode":"91405","street":"15 rue Georges Cl\u00e9menceau"}],"last_name":"Delerue","name":"Nicolas Delerue","person_id":20881,"phone":"","roles":["secondary","submitter"],"title":null,"type":"person_link","user_id":877,"user_identifier":"User:877:ODc3.dvGyVQuRyvRgGjoAvoGKLHLg5u0"}';
+    $req_html =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+
+    $matches=[];
+    $matchtxt='/name="person_link_data" value="(.*)">/';
+    $returnValue = preg_match_all($matchtxt, $req_html["html"], $matches);
+    $person_link_data=html_entity_decode($matches[1][0]);
+    $Indico->api->config('header_content_type', 'application/json');
+    $original_person_data=$person_link_data;
+    //print("person_link_data <BR/>\n"); var_dump($person_link_data);
+    $person_link_data=str_replace($editor_string.",","",$person_link_data);
+    //print("updated person_link_data <BR/>\n"); var_dump($person_link_data);
+    $post_data = [];
+    $post_data["person_link_data"]=$person_link_data;
+    $ret=[];
+    $req =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/edit?standalone=1", 'POST', $post_data, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+    if (is_array($req)){
+        if (array_key_exists("success",$req)){
+            $ret["content"]="Contribution updated successfully<BR/>\n";
+            $ret["original"]=$original_person_data;
+            $ret["value"]=true;
+            return $ret;
+        } else {
+            print("Error updating contribution<BR/>\n");
+            //var_dump($req);
+            //die("Error");
+            $ret["content"]="Error updating contribution<BR/>\n";
+            $ret["value"]=false;
+            return $ret;
+        }
+    } else {
+        print("Error updating contribution<BR/>\n");
+        //var_dump($req);
+        //die("Error");
+        $ret["content"]="Error updating contribution<BR/>\n";
+        $ret["value"]=false;
+        return $ret;
+    }
+} //function add_editor_to_contribution
 
 
 
@@ -1200,5 +1418,59 @@ function check_lpr_rights(){
         //print("\n--->\n");
     }
 } // check_lpr_rights
+
+function clone_contribution_to_student_session($contribution_id,$contrib_track){
+    global $Indico;
+    global $contributions;
+    //Clone contribution                
+    $reqContrib =$Indico->request( "/event/{id}/manage/contributions/".$contribution_id."/clone", 'POST', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => true ) );
+    var_dump($reqContrib["success"]);
+    if (!($reqContrib["success"]==true)){
+        print("Error cloning contribution: ".$reqContrib["content"]."<BR/>\n");
+        die("Stopping execution due to error.");
+    }
+    load_contributions(disable_contributions_cache: true, query_affiliations: false);
+    $new_contribution_id=array_last(array_keys($contributions));
+    print("New contribution ID: ".$new_contribution_id."<BR/>\n");
+    $ret=update_contribution_field($contribution_id,"custom_160","Cloned to student session: ".$new_contribution_id);
+    var_dump($ret);
+    print("<BR/>\n");
+    $ret=update_contribution_field($new_contribution_id,"custom_160","Cloned from contribution: ".$contribution_id);
+    var_dump($ret);
+    print("<BR/>\n");
+    print("<BR/>\nSet duration:<BR/>\n");
+    $post_data=array( "duration" => "14400" ,  );
+    $reqContrib =$Indico->request( "/event/{id}/manage/contributions/".$new_contribution_id."/duration", 'POST', $post_data ,  array(  'return_data' =>true, 'quiet' =>true, 'disable_cache' => true));
+    //var_dump($reqContrib);
+    if (!($Indico->api->response_code==200)){
+        print("Response code: ". $Indico->api->response_code. "<BR/>\n");
+    }
+    print("<BR/>\n");
+    print("Schedule contribution in room assigned for Sunday <BR/>\n");
+    print("Set schedule:<BR/>\n");
+    $post_data=array( "contribution_ids" => array ( intval($new_contribution_id) ) , "day" => "2026/05/17" );
+    $reqContrib =$Indico->request( "/event/{id}/manage/timetable/block/1400/schedule", 'POST', $post_data ,  array(  'return_data' =>true, 'quiet' =>true, 'disable_cache' => true));
+    //var_dump($reqContrib);
+    if (!($Indico->api->response_code==200)){
+        print("Response code: ". $Indico->api->response_code. "<BR/>\n");
+        die("Response code indicates an error, please investigate...");
+    }
+    print("Response code: ". $Indico->api->response_code. "<BR/>\n");
+    print("<BR/>\n");
+    $ret=assign_contribution_code($new_contribution_id,"");
+    if ($ret["value"]){
+        print("Code assigned successfully<BR/>\n");
+    } else {
+        print("Error assigning code: ".$ret["content"]."<BR/>\n");
+    }
+    print("<BR/>\n");
+
+    //assign track            
+    print("Assign track: ".$contrib_track["id"]." - ".$contrib_track["title"]." to contribution: ".$new_contribution_id."<BR/>\n");
+    $post_data=array( "track_id" => $contrib_track["id"] );
+    $reqTrack =$Indico->request( "/event/{id}/manage/contributions/".$new_contribution_id, 'PATCH', $post_data ,  array(  'return_data' =>true, 'quiet' =>true, 'disable_cache' => true));
+    var_dump($post_data);
+    var_dump($reqTrack);
+} // clone_contribution_to_student_session
 
 ?>
