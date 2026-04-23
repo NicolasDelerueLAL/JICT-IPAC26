@@ -365,10 +365,10 @@ function create_title_author_block($req,$indico_link=false){
     $function_content .="Reminder of the JACoW rule on authors list: The name of the primary author should be first, followed by all the other contributors (co-authors in indico), alphabetically by affiliation.<BR/>\n<BR/>\n\n";
 
     if ($multiple_primary_found){
-        $function_content .="<b>WARNING:</b> Several authors have been identified as primary authors. This should not be the case.<BR/>\n";
+        $function_content .="<b style='color:red;'>WARNING:Several authors have been identified as primary authors. This should not be the case.</b> <BR/>\n";
         $function_content .="To select the correct primary author, please update the contribution by modifying the $indico_link: only the corresponding author should appear \"author\". All other contributors should be listed as \"co-author\". <BR/>\n";
     } elseif (!$primary_found){
-        $function_content .="<b>WARNING:</b> No primary author has been identified. \n<BR/>";
+        $function_content .="<b style='color:red;'>WARNING:</b> No primary author has been identified. \n<BR/>";
         $function_content .="To select the correct primary author, please update the contribution by modifying the $indico_link: the correspondaning author and only the corresponding author should appear \"author\". All other contributors should be listed as \"co-author\". <BR/>\n";
     }
 
