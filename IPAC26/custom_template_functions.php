@@ -131,13 +131,22 @@ function create_title_author_block($req,$indico_link=false){
     $function_content .="<BR/>\n";
     $word_footnote="";
     $word_footnote_lines=0;
-    if (strlen(trim($req["custom_fields"][1]["value"]))>0){
-        $function_content .="Footnotes: <em>".$req["custom_fields"][1]["value"]."</em><BR/>\n";
-        $latex .="\thanks{".$req["custom_fields"][1]["value"]."}";
-        //$word_footnote="* ".$req["custom_fields"][1]["value"]." <w:br/> ";
-        $word_footnote="* ".$req["custom_fields"][1]["value"].'</w:t></w:r></w:p><w:p w:rsidR="00A63049" w:rsidRPr="00FA5D95" w:rsidRDefault="00A63049" w:rsidP="00A63049"><w:pPr><w:pStyle w:val="JACoWFootnoteText"/></w:pPr><w:r w:rsidRPr="00FA5D95"><w:t>';
+    $footnote_custom_field=-1;
+    //var_dump($req["custom_fields"]);
+    for($ifield=0;$ifield<count($req["custom_fields"]);$ifield++){
+        if (strtolower($req["custom_fields"][$ifield]["name"]) == "footnotes"){
+            $footnote_value=$req["custom_fields"][$ifield]["value"];
+            $footnote_custom_field=$ifield;
+            break;
+        }
+    }
+    if (strlen(trim($footnote_value))>0){
+        $function_content .="Footnotes: <em>".$footnote_value."</em><BR/>\n";
+        $latex .="\thanks{".$footnote_value."}";
+        //$word_footnote="* ".$footnote_value." <w:br/> ";
+        $word_footnote="* ".$footnote_value.'</w:t></w:r></w:p><w:p w:rsidR="00A63049" w:rsidRPr="00FA5D95" w:rsidRDefault="00A63049" w:rsidP="00A63049"><w:pPr><w:pStyle w:val="JACoWFootnoteText"/></w:pPr><w:r w:rsidRPr="00FA5D95"><w:t>';
         $word_title.="*";
-        $word_footnote_lines+=intval(mb_strlen($req["custom_fields"][1]["value"])/50)+1; // rough estimate of number of lines in footnote
+        $word_footnote_lines+=intval(mb_strlen($req["custom_fields"][$footnote_custom_field]["value"])/50)+1; // rough estimate of number of lines in footnote
         //$function_content .="Footnote is on ".$word_footnote_lines." lines in the Word template.<BR/>\n";
     } else{
         $function_content .="No footnotes (funding information) found.<BR/>\n";
@@ -280,7 +289,7 @@ function create_title_author_block($req,$indico_link=false){
                     while(array_key_exists($link_name, $author)){
                         $this_multi_aff_txt .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
                         $this_multi_latex_txt .=" ".str_replace("&","\&",$author[$link_name]["name"]).", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
-                        $word_footnote .= " ".str_replace("&","&amp;",$author[$link_name]["name"]).", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $word_footnote .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
                         $jaff+=1;
                         $link_name="affiliation_link_".($jaff+1);
                     }
@@ -394,7 +403,7 @@ function create_title_author_block($req,$indico_link=false){
     $returnValue["word"]=[];
     $returnValue["word"]["authors"] = $word_authors;
     $returnValue["word"]["title"] = $word_title;
-    $returnValue["word"]["footnote"] = $word_footnote;
+    $returnValue["word"]["footnote"] = str_replace("&","&amp;",str_replace("<","&lt;",str_replace(">","&gt;",$word_footnote)));
     $returnValue["word"]["abstract"] = $req["description"];
     $returnValue["word"]["footnote_lines"] = $word_footnote_lines;
     //$returnValue["word"]["authors"] = "";
