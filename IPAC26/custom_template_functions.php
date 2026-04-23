@@ -52,7 +52,7 @@ function create_title_author_block($req,$indico_link=false){
     $latex="%%%%% Title - Author block generated from indico contribution details %%%%%\n";
     $latex.="%%%%%%%%%%%%%%%%%%%% Do not modify  %%%%%%%%%%%%%%%%%%%%%%%%%\n";
     $latex.="%%%%% If you need to modify the content of this block, do it by modifying the $indico_link %%%%%\n";
-    $function_content .="Contribution title: <b>".$req["title"]."</b><BR/>\n";
+    //$function_content .="Contribution title: <b>".$req["title"]."</b><BR/>\n";
 
     $contribs_qa_data=file_read_json(  $cws_config['global']['data_path']."/contribs_qa.json",true);
     if (!($contribs_qa_data)) {
@@ -211,7 +211,6 @@ function create_title_author_block($req,$indico_link=false){
     $footnote_symbol_index=0;
 
     foreach($all_labs as $lab => $lab_info){
-        $primary_found=false;
         $this_primary_aff_txt="";
         $this_primary_latex_txt="";
         $this_primary_word_txt="";
@@ -265,7 +264,7 @@ function create_title_author_block($req,$indico_link=false){
                     $this_secondary_word_txt .=get_initial($author["first_name"]," ").$author["last_name"];
                 } //primary or secondary?
                 if (array_key_exists("affiliation_link_2",$author)){
-                    $this_multi_aff_txt .= "(also at";
+                    $this_multi_aff_txt .= " (also at";
                     $this_multi_latex_txt .="\\footnote{also at ";
                     $this_multi_word_txt .='</w:t><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>';
                     $this_footnote_symbol=$footnote_symbols[$footnote_symbol_index%count($footnote_symbols)];
@@ -280,8 +279,8 @@ function create_title_author_block($req,$indico_link=false){
                     $link_name="affiliation_link_".($jaff+1);
                     while(array_key_exists($link_name, $author)){
                         $this_multi_aff_txt .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
-                        $this_multi_latex_txt .=" ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
-                        $word_footnote .= " ".$author[$link_name]["name"].", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $this_multi_latex_txt .=" ".str_replace("&","\&",$author[$link_name]["name"]).", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
+                        $word_footnote .= " ".str_replace("&","&amp;",$author[$link_name]["name"]).", ".$author[$link_name]["city"].", ".$author[$link_name]["country_name"].";";
                         $jaff+=1;
                         $link_name="affiliation_link_".($jaff+1);
                     }
@@ -319,8 +318,8 @@ function create_title_author_block($req,$indico_link=false){
                 $function_content .="<b>WARNING:</b> Affiliation empty for ". $author["first_name"]." ".$author["last_name"]." This should not be the case.<BR/>\n";
             } else {
                 $this_aff_txt .=$lab_info["name"];
-                $this_latex_txt .= $lab_info["name"]; 
-                $this_word_txt .= $lab_info["name"];
+                $this_latex_txt .= str_replace("&","\&",$lab_info["name"]); 
+                $this_word_txt .= str_replace("&","&amp;",$lab_info["name"]);
                 if (strlen(trim($lab_info["city"]))==0){
                     $function_content .="<b>WARNING:</b> City empty for affiliation ". $lab." This should not be the case.<BR/>\n";
                 } else {
