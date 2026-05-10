@@ -19,6 +19,12 @@ if ($_SERVER["QUERY_STRING"]) {
     //print($_SERVER["QUERY_STRING"]."\n");
     //print_r($queryArray);
 }
+if ($_POST){
+    parse_str(http_build_query($_POST), $postArray);
+    //print("POST data:\n");
+    //print_r($postArray);
+    $queryArray["contribution_id"]=$postArray["contribution_id"];
+}
 
 require( '../config.php' );
 require_lib( 'jict', '1.0' );
@@ -43,6 +49,7 @@ show_exec_time("af check lpr rights");
 
 $Indico->load();
 
+
 show_exec_time("bf load papers");
 
 $disable_cache=false;
@@ -53,6 +60,132 @@ $reviewers=get_reviewers_for_contribution($queryArray["contribution_id"],recheck
 load_papers($disable_cache,recheck_probability_percent:2);
 show_exec_time("af load papers");
 
+
+//Check if there is a judgement
+if ($_POST){
+    //var_dump($_POST);
+    if (($_POST["submit_notify"])||($_POST["submit_silent"])){
+        $post_content="";
+        $post_content.="Recording judgement... <br/>";
+        $sender="peer-review@ipac26.org";
+        $bcc_address_array=array( "peer-review@ipac26.org" , "editor@ipac26.org" );
+        $lpr_manager="EventPerson:35761";
+        $copy_for_sender=true;
+
+        $ret=comment_paper($postArray["contribution_id"],"Proposed judgement:\n".$postArray["judgement"]."\n"."Comments to authors:\n".$postArray["comment_to_authors"]."\n"."Internal comments:\n".$postArray["internal_comment"]);
+        print("<!--- comment paper result:\n");
+        var_dump($ret);
+        print(" --->\n");
+        if ($_POST["submit_notify"]){        
+            if ($_POST["submit_notify"]=="Judge and notify MC coordinators" ){
+                $mcCoordIds=array();
+                $mcCoordIds[]=$lpr_manager;
+                $roles =$Indico->request( '/event/{id}/manage/roles/api/roles/', 'GET', false, [ 'return_data' =>true ]);
+                $post_content.="MC coordinators to notify:<BR/>\n";
+                print("MC coordinators: ");
+                print("<BR/>\n");
+                foreach ($roles as $role) {
+                    if (in_array($role["code"],array($postArray["MC"]))){
+                        //print("<BR/>\n"); var_dump($role); print("<BR/>\n");
+                        foreach($role["members"] as $member){
+                            $post_content.=$member["full_name"];
+                            $part=get_participant("email",$member["email"]);
+                            //print($member["full_name"]); print("<BR/>\n"); var_dump($part);print("<BR/>\n");print("<BR/>\n");
+                            if (($part)&&(array_key_exists("id",$part))){
+                                print("Participant ID: ".$part["id"]."<BR/>\n");
+                                $post_content.="(Participant ID: ".$part["id"].")<BR/>\n";
+                                $event_id=($part["id"]);
+                                $mcCoordIds[]="EventPerson:".$part["id"];
+                            } else {
+                                print("No participant found with email ".$member["email"]."<BR/>\n");
+                                $post_content.="No participant found with email ".$member["email"]."<BR/>\n";
+                                $post_content.="<BR/>\n";
+                            }
+                        }
+                    }
+                }
+            } //notify MC coordinators
+            else if ($_POST["submit_notify"]=="Judge and notify LPR coordinators only"){
+                $mcCoordIds=array();
+                $mcCoordIds[]=$lpr_manager;
+            }
+            if (($postArray["judgement"]=="major")||($postArray["judgement"]=="minor")){
+                $postArray["judgement"].=" revision";
+            }
+            print("Sending email... <br/>\n");
+            $post_content.="Sending email... <br/>";
+            print("Email will be sent to ".implode(", ", $mcCoordIds)." <br/>");
+            $post_content.="Email will be sent to ".implode(", ", $mcCoordIds)." <br/>";
+            $use_indico_token=true;
+            $use_session_token=false;        
+            $ret=send_email_file_to_eventperson("LPR_contribution_proposed_judgment.txt",$mcCoordIds,$sender,$copy_for_sender,$contributions[$postArray["contribution_id"]],$bcc_address_array,use_indico_token:$use_indico_token,use_session_token: $use_session_token);
+            if ($ret){
+                $post_content.="Email sent successfully.<br/>";
+            } else {
+                $post_content.="Error sending email.<br/>";
+                var_dump($ret);
+            }
+        } //notify  
+        else {
+            $post_content.="No notification sent.<br/>";
+        }
+    } else if (isset($_POST["apply_judgement"]) || isset($_POST["apply_judgement_notify_me"])){
+        $comment="This paper has been reviewed and the following decision has been taken by the reviewers: ";
+
+        if ($_POST["proposed_judgement"]=="accept"){
+            $decision="accept";
+            $comment.="Accept.";
+        } else if ($_POST["proposed_judgement"]=="reject"){
+            $decision="reject";
+            $comment.="Reject.";
+        } else if ($_POST["proposed_judgement"]=="major"){
+            $decision="to_be_corrected";
+            $comment.="The paper requires revisions.";
+        } else if ($_POST["proposed_judgement"]=="minor"){
+            $decision="to_be_corrected";
+            $comment.="The paper requires revisions.";
+        } else {
+            die("Unknown judgement: ".$_POST["proposed_judgement"]);
+        }
+
+        $_POST["decision"]=$decision;
+        if (strlen($_POST["comment_to_authors"])==0){
+            $_POST["comment_to_authors"]="No comment to authors.";
+        }
+        $comment.="<br/><br/>\n";
+        $comment.="Reviewers propositions: ".$_POST["review_txt"]."<br/>\n";
+        $comment.="Reviews: ".$_POST["full_review_txt"]."<br/><br/>\n";
+        $comment.=$_POST["editing_status"]."<br/><br/>\n";
+        $post_content.="Judging paper... <br/>";
+        print("Judging paper... <br/>");
+        $ret=judge_paper($postArray["contribution_id"],$decision,$comment);
+        print("<!--- result:\n");
+        var_dump($ret);
+        print(" --->\n");
+        $ret=comment_paper($postArray["contribution_id"],"Revision 2");
+        print("<!--- result:\n");
+        var_dump($ret);
+        print(" --->\n");
+        $sender="peer-review@ipac26.org";
+        $bcc_address_array=array( "peer-review@ipac26.org" , "editor@ipac26.org" );
+        $bcc_address_array=array( "editor@ipac26.org" );
+        $lpr_manager="EventPerson:35761";
+        $copy_for_sender=true;
+        if (isset($_POST["apply_judgement_notify_me"])){
+            $ret=send_email_file_to_eventperson("LPR_contribution_judged.txt",$lpr_manager,$sender,$copy_for_sender,$contributions[$postArray["contribution_id"]],$bcc_address_array);
+        } else {
+            $recipient_role=array ( "submitter" , "author" ); 
+            $ret=send_email_file_to_contributor("LPR_contribution_judged.txt",$recipient_role,array( $postArray["contribution_id"] ),$sender,$copy_for_sender,$contributions[$postArray["contribution_id"]],$bcc_address_array);
+
+        }
+        print("<!--- result:\n");
+        var_dump($ret);
+        print(" --->\n");
+    }
+} // there is a post entry (judgement)
+ else {
+    $post_content="";
+ }
 
 $T =new TMPL( $cfg['template'] );
 $T->set([
@@ -78,7 +211,7 @@ $js_variables ="
 <script>
 ";
 */
-$content ="";
+$content =$post_content;
 
 $content .="<A HREF='list_participants.php'>Go to the list of participants</A><BR/><BR/>\n";
 $content .="<A HREF='list_papers.php'>Go to the list of papers</A><BR/><BR/>\n";

@@ -117,9 +117,34 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
         $paper["description"]=$contribution["description"];
         $paper["author"]=$contribution["primary_author_name"];
         $paper["affiliation"]=$contribution["primary_author_affiliation"];
-        $paper["status"]=$paper["state"]["name"];
+        $paper["status"]="LPR: ".$paper["state"]["name"];
         $paper["reviewers"]="";
+        $paper["proposed_judgement"]=false;
         $paper["edit_link"]="<A HREF='edit_paper.php?contribution_id=".$paper["contribution_id"]."'>Edit paper</A>";
+        //get editing status
+
+        //$reqEdit =$Indico->request( "/event/{id}/api/contributions/".$paper["contribution_id"]."/editing/paper", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>false , 'use_session_token' => true ) );
+        
+        if ((rand(0,100)<$recheck_probability_percent)){
+            $reqEdit =$Indico->request( "/event/{id}/api/contributions/".$paper["contribution_id"]."/editing/paper", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>false , 'cache_time'=> 10 , 'use_session_token' => true ) );
+        } else {
+            $reqEdit =$Indico->request( "/event/{id}/api/contributions/".$paper["contribution_id"]."/editing/paper", 'GET', false, array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>false , 'cache_time'=> 60*60 , 'use_session_token' => true ) );
+        }
+        
+        
+        if ($reqEdit){
+            $paper["editing_status"]="Editing: ".$reqEdit["state"]["name"]." ";
+            if ($reqEdit["editor"]){
+                $paper["editing_status"].=$reqEdit["editor"]["full_name"];
+            } else {
+                $paper["editing_status"].="No editor yet";
+            }
+        } else {
+            $paper["editing_status"]="Paper not yet ready for editing";
+        } //recheck paper editing status
+        $paper["status"].="<BR/>\n".$paper["editing_status"];
+        
+        
         $reviewers=get_reviewers_for_contribution($contribution["id"],recheck_probability_percent:$recheck_probability_percent);
         //print("<!---\n"); print("Reviewers for contribution ".$contribution["id"]." \n"); var_dump($reviewers); print(" --->\n");
         $paper["overdue"]="";
@@ -186,6 +211,11 @@ function load_papers($disable_cache,$disable_abstracts_cache=false,$recheck_prob
                 //print("\nLast comment\n");
                 //var_dump($latest_comment);
                 $paper["latest_comment"]=format_time($latest_comment["created_dt"])." - ".$latest_comment["text"];
+
+                if(str_contains($latest_rev["comments"][count($latest_rev["comments"])-1]["text"],"Proposed judgement:")){
+                    $paper["proposed_judgement"]=trim(explode("\n",$latest_rev["comments"][count($latest_rev["comments"])-1]["text"])[1]);
+                }
+
             } else {
                 $latest_comment=false;
                 $paper["latest_comment"]="No comment";         
@@ -270,11 +300,19 @@ function show_paper_info($contribution_id,$paper=false){
     for ($irev=0;$irev<count($paper["revisions"]);$irev++){
         $the_rev=$paper["revisions"][$irev];
         $paper["revisions_history"].="<li>Revision ".($irev+1)." submitted on ".format_time($the_rev["submitted_dt"])."<BR/>\n";
+        $paper["proposed_judgement"]=false;
         if (count($the_rev["comments"])>0){
             $paper["revisions_history"].="Comments:<BR/><ol>\n";
             for ($icom=0;$icom<count($the_rev["comments"]);$icom++){
                 $the_comment=$the_rev["comments"][$icom];
-                $paper["revisions_history"].="<li>".format_time($the_comment["created_dt"])." - ".$the_comment["text"]."</li>\n";
+                if(str_contains($the_comment["text"],"Proposed judgement:")){
+                    $paper["proposed_judgement"]=trim(explode("\n",$the_comment["text"])[1]);
+                    $paper["proposed_judgement_date"]=$the_comment["created_dt"];
+                    $paper["proposed_judgement_text"]=$the_comment["text"];
+                    $paper["revisions_history"].="<li><b>".format_time($the_comment["created_dt"])." - ".$the_comment["text"]."</b></li>\n";
+                } else {
+                   $paper["revisions_history"].="<li>".format_time($the_comment["created_dt"])." - ".$the_comment["text"]."</li>\n";
+                }
             }
             $paper["revisions_history"].="</ol>\n";
         }
@@ -319,13 +357,17 @@ function show_paper_info($contribution_id,$paper=false){
         $content .=$field_title." : ".$paper[$field_name]."<BR/>\n";
     } //for each field
 
+    $review_txt="";
+    $full_review_txt="";
     if (count($paper["revisions"][count($paper["revisions"])-1]["reviews"])){
         $the_rev=$paper["revisions"][count($paper["revisions"])-1];
         $content .="<BR/><BR/>\n";
         $content .="<b style='color:green;'>".count($the_rev["reviews"])." reviews received for the latest revision:</b>\n";
+        $review_txt.=count($the_rev["reviews"])." reviews received for the latest revision.<BR/>\n";
         $content .="<table border=1>\n";
         for($irating=-5;$irating<count($the_rev["reviews"][0]["ratings"]);$irating++){
             $content .="<tr>\n";
+            $this_question_txt="";
             for($ireview=-1;$ireview<count($the_rev["reviews"]);$ireview++){
                 $content .="<td>\n";
                 if ($irating==-5){
@@ -353,6 +395,8 @@ function show_paper_info($contribution_id,$paper=false){
                 } else if ($irating==-2){
                     if ($ireview>=0){
                         $content .=$the_rev["reviews"][$ireview]["proposed_action"]["name"];
+                        $review_txt.="Reviewer ".($ireview+1).": ".$the_rev["reviews"][$ireview]["proposed_action"]["name"]."\n";
+
                     } else {
                         $content .="Decision";
                     }
@@ -365,23 +409,88 @@ function show_paper_info($contribution_id,$paper=false){
                 } else{
                      if ($ireview==-1){
                         $content .=$the_rev["reviews"][0]["ratings"][$irating]["question"]["title"];
+                        $this_question_txt.="\n".$the_rev["reviews"][0]["ratings"][$irating]["question"]["title"]."\n";
                     } else {
+                        $this_question_txt.="Reviewer ".($ireview+1).": ";
                         if (is_bool($the_rev["reviews"][$ireview]["ratings"][$irating]["value"])){
                             if ($the_rev["reviews"][$ireview]["ratings"][$irating]["value"]){
                                 $content .="Yes";
+                                $this_question_txt.="Yes\n";
                             } else {
                                 $content .="No";
+                                $this_question_txt.="No\n";
                             }
                         } else {
                             $content .=$the_rev["reviews"][$ireview]["ratings"][$irating]["value"];
+                            $this_question_txt.=$the_rev["reviews"][$ireview]["ratings"][$irating]["value"]."\n";
                         }
                     }
                 }
                 $content .="</td>\n";
             }
+            $full_review_txt.=$this_question_txt;
             $content .="</tr>\n";
         }            
         $content .="</table>\n";
+        $content .="<br/>\n";
+        $content .="<br/>\n";
+        $content .="Editing status: ".$paper["editing_status"]."<br/>\n";
+        
+        if (count($paper["revisions"][count($paper["revisions"])-1]["reviews"])>=2){
+            $content .="<br/>\n";
+            $content .="<hr/>\n";
+            $content .="<br/>\n";
+            if (!($paper["proposed_judgement"])){
+                $content .="<b style='color:red;'>No judgement proposed yet.</b><br/>\n";
+                $content .="<b style='color:green;'>Paper ready to be judged.</b><br/>\n";
+                $content .="Propose a judgement:\n";
+                $content .="<form action='edit_paper.php?contribution_id=".$contribution_id."' method='post'>\n";
+                $content .="<input type=hidden name=contribution_id value=".$contribution_id.">";
+                $content .="<input type=hidden name=MC value=".$paper["MC"].">";
+                $content .="<input type=hidden name=editing_status value='Editing status: ".$paper["editing_status"]."' >";
+                $content .="<input type=hidden name=review_txt value='".$review_txt."'>";                
+                $content .="<input type=hidden name=full_review_txt value='".$full_review_txt."'>";                
+                $content .="<input type=radio name=judgement value=accept> Accept<br/>\n";
+                $content .="<input type=radio name=judgement value=minor> Minor modifications<br/>\n";
+                $content .="<input type=radio name=judgement value=major> Major modifications<br/>\n";
+                $content .="<input type=radio name=judgement value=reject> Reject<br/>\n";
+                $content .="<br/>\n";
+                $content .="Comment to the authors:<br/>\n";
+                $content .="<textarea name=comment_to_authors rows=4 cols=50></textarea><br/>\n";
+                $content .="Comments to the MC cordinators and for the records (not sent to the authors):<br/>\n";
+                $content .="<textarea name=internal_comment rows=4 cols=50></textarea><br/>\n";
+                $content .="<br/>\n";
+                $content .="<input type=submit name=submit_notify value=\"Judge and notify MC coordinators\"> <br/>\n";
+                $content .="<input type=submit name=submit_notify value=\"Judge and notify LPR coordinators only\"> <br/>\n";
+                $content .="<input type=submit name=submit_silent value=\"Judge but do not notify MC coordinators\"> <br/>\n";
+                $content .="</form>\n";
+            } else {
+                $content .="<b style='color:green;'>Proposed judgement</b><br/>";
+                $content .="Proposed on ".$paper["proposed_judgement_date"];
+                $days_ago=round((time()-strtotime($paper["proposed_judgement_date"]))/(60*60*24));
+                $days_txt="( ".$days_ago." day";
+                if ($days_ago>1){
+                    $days_txt.="s";
+                }
+                $days_txt.=" ago) \n";      
+                $content .=$days_txt."<br/>\n";
+                $content .=str_replace("\n", "<br/>", $paper["proposed_judgement_text"])." <br/>\n";
+                if ($days_ago>1){
+                    $content .="Apply the proposed judgement: ".$paper["proposed_judgement_text"]."\n";
+                    $content .="<form action='edit_paper.php?contribution_id=".$contribution_id."' method='post'>\n";
+                    $content .="<input type=hidden name=contribution_id value=".$contribution_id.">";
+                    $content .="<input type=hidden name=proposed_judgement value='".$paper["proposed_judgement"]."'>";
+                    $content .="<input type=submit name=apply_judgement value=\"Apply the judgement and notify the authors\"> <br/>\n";
+                    $content .="<input type=submit name=apply_judgement_notify_me value=\"Apply the judgement but notify me\"> <br/>\n";
+                    $content .="<input type=hidden name=editing_status value='Editing status: ".$paper["editing_status"]."' >";
+                    $content .="<input type=hidden name=review_txt value='".$review_txt."'>";                
+                    $content .="<input type=hidden name=full_review_txt value='".$full_review_txt."'>";                
+                    $content .="</form>\n";
+                }
+            }
+            
+        }
+
     }
 
 
@@ -882,3 +991,20 @@ function check_reviewer_availability_for_paper($person_event_id,$contribution_id
     $retval["can_assign"]=true;
     return $retval;
 } //check_reviewer_availability_for_paper($contribution, $person_id)
+
+function judge_paper($contribution_id,$decision,$comment,$use_session_token=true,$use_indico_token=false){
+    global $Indico;
+    show_exec_time("judge_paper start");
+    //print("\njudging: $contribution_id\n");
+    //print("Judging paper $contribution_id with decision $decision and comment: $comment \n");
+    $post_data=array(
+        "comment" => $comment,
+        'action' => $decision , 
+    );
+    if ($use_indico_token){
+        $use_session_token=false;
+    }
+    $req =$Indico->request( "/event/{id}/papers/api/".$contribution_id."/judge", 'POST', $post_data , array( 'return_data' =>true, 'quiet' =>true, 'disable_cache' =>true , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token ) );
+    show_exec_time("judge_paper end");
+}//judge_paper
+
