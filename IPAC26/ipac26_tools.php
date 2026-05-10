@@ -369,10 +369,14 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
         "bcc_addresses" => $bcc_address_array ,
         "copy_for_sender" => $copy_for_sender ,
         "role_id" => array() ,
-        "persons" => array( $eventPerson ),
         "no_account" => false,
         "not_invited_only" => false, 
     );
+    if (is_array($eventPerson)){
+        $post_data["persons"]=$eventPerson;
+    } else {
+        $post_data["persons"]=array($eventPerson);
+    }
     //var_dump($post_data);
     $Indico->api->config('header_content_type', 'application/json');
 
@@ -393,8 +397,6 @@ function send_email_to_eventperson($subject,$body,$eventPerson,$sender_email,$co
     }
     show_exec_time("send_email_to_eventperson end");
 }//send_email_to_eventperson
-
-
 
 function send_email_file_to_eventperson($file,$eventPerson,$sender_email,$copy_for_sender,$contribution=null,$bcc_address_array=array(),$use_session_token=true,$use_indico_token=false){
     global $user;
@@ -436,6 +438,20 @@ function send_email_file_to_eventperson($file,$eventPerson,$sender_email,$copy_f
                     }
                 } else {                    
                     $newvalue=$user[substr($thematch,1)];
+                }
+                $message=str_replace("##".$thematch."##",$newvalue,$message);
+            } else if (substr($thematch,0,1)=="F"){
+                //date from form
+                if (str_contains($thematch,":")){
+                    $fields=explode(":",substr($thematch,1));
+                    //var_dump($fields);
+                    if (count($fields)==2){
+                        $newvalue=$_POST[$fields[0]][$fields[1]];
+                    } else if (count($fields)==3){
+                        $newvalue=$_POST[$fields[0]][$fields[1]][$fields[2]];
+                    }
+                } else {                    
+                    $newvalue=$_POST[substr($thematch,1)];
                 }
                 $message=str_replace("##".$thematch."##",$newvalue,$message);
             }
@@ -496,13 +512,13 @@ function send_email_file_to_contributor_as_editor($file,$recipient_role,$contrib
 } 
 
 
-function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null){
+function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null,$bcc_addresses=array()){
     global $user;
     global $cws_config;
+    $filename=$cws_config['global']['messages_path']."/".$file;
+    if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
+    $message=file_get_contents($filename);
     if ($contribution){
-        $filename=$cws_config['global']['messages_path']."/".$file;
-        if (!(file_exists($filename))) die("File for message does not exist: ".$filename);
-        $message=file_get_contents($filename);
         $matches=[];
         $matchtxt='/##([a-zA-Z=@_:]+)##/';
         $returnValue = preg_match_all($matchtxt, $message, $matches);
@@ -536,6 +552,20 @@ function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,
                     $newvalue=$user[substr($thematch,1)];
                 }
                 $message=str_replace("##".$thematch."##",$newvalue,$message);
+            } else if (substr($thematch,0,1)=="F"){
+                //date from form
+                if (str_contains($thematch,":")){
+                    $fields=explode(":",substr($thematch,1));
+                    //var_dump($fields);
+                    if (count($fields)==2){
+                        $newvalue=$_POST[$fields[0]][$fields[1]];
+                    } else if (count($fields)==3){
+                        $newvalue=$_POST[$fields[0]][$fields[1]][$fields[2]];
+                    }
+                } else {                    
+                    $newvalue=$_POST[substr($thematch,1)];
+                }
+                $message=str_replace("##".$thematch."##",$newvalue,$message);
             }
         }
         //print($message);
@@ -543,22 +573,22 @@ function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,
         print(" <BR/>\n");
         print(" <BR/>\n");
         */
-        $subject=substr($message,0,strpos($message,"\n"));
-        //print("Subject: $subject <BR/>\n");
-        $body=str_replace("\n","<BR/>\n",substr($message,strpos($message,"\n")+1));
-        send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender);
     } else {
         print("Contribution is null!<BR/>\n");
     }
+    $subject=substr($message,0,strpos($message,"\n"));
+    //print("Subject: $subject <BR/>\n");
+    $body=str_replace("\n","<BR/>\n",substr($message,strpos($message,"\n")+1));
+    send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses);
 }
 
-function send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender){
+function send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses=array()){
     global $Indico;
     $post_data=array(
         "sender_address" => $sender_email,
         "subject" => $subject, 
         "body" => $body,
-        "bcc_addresses" => array(),
+        "bcc_addresses" => $bcc_addresses,
         "copy_for_sender" => $copy_for_sender ,
         "recipient_roles" => $recipient_role ,
         "contribution_id" => $contribution_ids,
@@ -844,8 +874,10 @@ function update_titles_of_contributions_in_qa($contribution_id){
         print("<BR/>\n");
         foreach($contribs_qa_data[$contribution_id]["title"]["no_case_change"] as $word){
             print("Word with no case change: ".$word." ".strtolower($word)."<BR/>\n");
-            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word),$word,$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
-            $contribs_qa_data[$contribution_id]["title"]["upper_case"]=str_replace(strtoupper($word),$word,$contribs_qa_data[$contribution_id]["title"]["upper_case"]);
+            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(" ".strtolower($word)," ".$word,$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+            $contribs_qa_data[$contribution_id]["title"]["upper_case"]=str_replace(" ".strtoupper($word)," ".$word,$contribs_qa_data[$contribution_id]["title"]["upper_case"]);
+            $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=str_ireplace(strtolower($word)." ",$word." ",$contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
+            $contribs_qa_data[$contribution_id]["title"]["upper_case"]=str_replace(strtoupper($word)." ",$word." ",$contribs_qa_data[$contribution_id]["title"]["upper_case"]);
             print("Sentence case with no case change: ".$contribs_qa_data[$contribution_id]["title"]["sentence_case"]."<BR/>\n");
         }
         $contribs_qa_data[$contribution_id]["title"]["sentence_case"]=ucfirst($contribs_qa_data[$contribution_id]["title"]["sentence_case"]);
@@ -1092,7 +1124,7 @@ function comment_paper($contribution_id,$comment,$use_session_token=true,$use_in
         "comment" => $comment,
         "visibility" => "judges" , 
     );
-    print("\ncommenting: $contribution_id\n");
+    //print("\ncommenting: $contribution_id\n");
     if ($use_indico_token){
         $use_session_token=false;
     }

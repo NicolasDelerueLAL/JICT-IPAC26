@@ -1,0 +1,33 @@
+[IPAC'26] A judgement is proposed for Contribution ID: ##Fcontribution_id## in your MC
+Dear {first_name} {last_name},
+
+As part of the Light Peer Review process a judgement has been proposed on the following contribution:
+Contribution ID: <A HREF='https://indico.jacow.org/event/95/contributions/##Fcontribution_id##/'>##Fcontribution_id##</A> Friendly ID:###=friendly_id##
+Title: ##=title##
+Primary author: ##=primary_author_name## (##=primary_author_affiliation##)
+
+Proposed judgement: 
+##Fjudgement##
+
+Comments for authors: 
+##Fcomment_to_authors##
+
+Internal comments: 
+##Finternal_comment##
+
+Reviewers proposals:
+##Freview_txt##
+
+Reviews:
+##Ffull_review_txt##
+
+
+As MC Coordinator, we ask you to consider this proposed judgement and to please let us know within 48 hours if you disagree with this decision by emailing to peer-review@ipac26.org
+After that time, we will assume you are fine with it and we will proceed applying the judgement and notifying the author(s).
+
+
+With kind regards,
+Gianluca Geloni
+LPR coordinator
+
+

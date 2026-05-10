@@ -1,0 +1,27 @@
+[IPAC'26] A LPR decision has been taken regarding your contribution ##Fcontribution_id## 
+Dear {first_name} {last_name},
+
+Thank you for submitting your contribution ##Fcontribution_id## (Title: ##=title##) to the IPAC'26 LPR.
+The following decision has been taken regarding your paper: ##Fdecision##
+
+Comment by the LPR coordinator:
+##Fcomment_to_authors##
+
+This decision has been taken by the LPR coordinator based on the reviewers proposals.
+
+Reviewers proposals:
+##Freview_txt##
+
+Reviews:
+##Ffull_review_txt##
+
+Please correct your paper according to the reviewers comments and resubmit it within a week.
+
+You may have received separately comments from the proceedings editors suggesting modifications to the paper formatting. In this case, please keep these modifications when you will resubmit your paper.
+
+
+Thank you in advance,
+
+Gianluca Geloni
+LPR coordinator
+
