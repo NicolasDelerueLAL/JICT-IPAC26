@@ -141,17 +141,20 @@ function load_abstracts($disable_cache=false){
     show_exec_time("load_abstracts_end");
 }//load_abstracts
 
-function load_contributions($disable_contributions_cache=false,$query_affiliations=false){
+function load_contributions($disable_contributions_cache=false,$query_affiliations=false,$cache_time=-1){
     global $Indico;
     global $contributions,$contributions_by_abs_id,$contributions_by_fr_id,$all_contributions;
     global $abstracts;
     show_exec_time("load_contributions_start");
     $_rqst_cfg=[];
     $_rqst_cfg['disable_cache'] =$disable_contributions_cache;
-    if ($disable_contributions_cache){
-        $cache_time=1;
-    } else {
-        $cache_time=60*60*24*7;
+    if ((!(isset($cache_time))||($cache_time==-1))){
+        if ($disable_contributions_cache){
+            $cache_time=1;
+            $disable_contributions_cache=false;
+        } else {
+            $cache_time=60*60*24*7;
+        }
     }
     $req_contributions =$Indico->request( "/event/{id}/manage/contributions/contributions.json", 'GET', false, array( 'return_data' =>true, 'quiet' =>true , 'disable_cache' => $disable_contributions_cache, 'cache_time' => $cache_time)  );
     $contributions=[];
@@ -170,6 +173,7 @@ function load_contributions($disable_contributions_cache=false,$query_affiliatio
         //$contribution["track_name"]=$contribution["track"]["code"]." - ".$contribution["track"]["title"];
 
         $contribution["speaker_name"]="";
+        $contribution["speaker_email"]="";
         $contribution["speaker_country"]="";
         $contribution["speaker_region"]="";
         $contribution["speaker_affiliation"]="";
@@ -512,7 +516,7 @@ function send_email_file_to_contributor_as_editor($file,$recipient_role,$contrib
 } 
 
 
-function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null,$bcc_addresses=array()){
+function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$contribution=null,$bcc_addresses=array(),$use_session_token=true,$use_indico_token=false,$test_and_die=false){
     global $user;
     global $cws_config;
     $filename=$cws_config['global']['messages_path']."/".$file;
@@ -579,10 +583,16 @@ function send_email_file_to_contributor($file,$recipient_role,$contribution_ids,
     $subject=substr($message,0,strpos($message,"\n"));
     //print("Subject: $subject <BR/>\n");
     $body=str_replace("\n","<BR/>\n",substr($message,strpos($message,"\n")+1));
-    send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses);
+    if ($test_and_die){
+        print("Subject: <BR/>\n$subject <BR/>\n <BR/>\n");        
+        print("Body: <BR/>\n$body <BR/>\n <BR/>\n");        
+        die("Email tets and die");
+    } else {
+        send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses,$use_session_token,$use_indico_token);
+    }
 }
 
-function send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses=array()){
+function send_email_to_contributor($subject,$body,$recipient_role,$contribution_ids,$sender_email,$copy_for_sender,$bcc_addresses=array(),$use_session_token=true,$use_indico_token=false){
     global $Indico;
     $post_data=array(
         "sender_address" => $sender_email,
@@ -596,7 +606,7 @@ function send_email_to_contributor($subject,$body,$recipient_role,$contribution_
     //var_dump($post_data);
     $Indico->api->config('header_content_type', 'application/json');
 
-    $req =$Indico->request( "/event/{id}/manage/contributions/api/email-roles/send", 'POST', $post_data,  array( 'return_data' =>true, 'quiet' => false ) );
+    $req =$Indico->request( "/event/{id}/manage/contributions/api/email-roles/send", 'POST', $post_data,  array( 'return_data' =>true, 'quiet' => false , 'use_session_token' => $use_session_token , 'use_indico_token' => $use_indico_token) );
         if (1==0){
             print("<BR/>\n");
             var_dump($post_data);
@@ -1117,12 +1127,13 @@ function remove_editor_from_contribution($contribution_id){
 
 
 
-function comment_paper($contribution_id,$comment,$use_session_token=true,$use_indico_token=false){
+function comment_paper($contribution_id,$comment,$use_session_token=true,$use_indico_token=false,$visibility="judges"){
+    //Visibility: "judges" "reviewers" "contributors"
     global $Indico;
     show_exec_time("comment_paper start");
     $post_data=array(
         "comment" => $comment,
-        "visibility" => "judges" , 
+        "visibility" => $visibility , 
     );
     //print("\ncommenting: $contribution_id\n");
     if ($use_indico_token){
@@ -1505,4 +1516,50 @@ function clone_contribution_to_student_session($contribution_id,$contrib_track){
     var_dump($reqTrack);
 } // clone_contribution_to_student_session
 
+
+ function addWatermark($x, $y, $watermarkText, $angle, $pdf)
+{
+    $angle = $angle * M_PI / 180;
+    $c = cos($angle);
+    $s = sin($angle);
+    $cx = $x * 1;
+    $cy = (300 - $y) * 1;
+    $pdf->_out(sprintf('q %.5F %.5F %.5F %.5F %.2F %.2F cm 1 0 0 1 %.2F %.2F cm', $c, $s, - $s, $c, $cx, $cy, - $cx, - $cy));
+    $pdf->Text($x, $y, $watermarkText);
+    $pdf->_out('Q');
+} //addWatermark on a PDF page, using FPDF library (https://www.fpdf.org/)
+
+use setasign\Fpdi\Fpdi;
+
+function addMarkings($headerText, $watermarkText, $filein, $fileout) {
+
+
+    // setup the autoload function
+    require_once('../../fpdf/fpdf.php');
+    require_once('../../fpdi/src/autoload.php');
+
+    //print("autoloaded");
+
+    // initiate FPDI
+    $pdf = new Fpdi();
+    // add a page
+    $pages_count = $pdf->setSourceFile($filein);
+    for ($i = 1; $i <= $pages_count; $i ++) {
+        $pdf->AddPage();
+        $pdf->SetFont('Times', 'B', 140);
+        $pdf->SetTextColor(212, 212, 212);
+        addWatermark(42, 280, $watermarkText, 45, $pdf);
+        $pdf->SetXY(25, 25);
+        $tplIdx = $pdf->importPage($i);
+        $pdf->useTemplate($tplIdx, 0, 0);
+
+        $pdf->SetFont('Times', 'B', 12);
+        $pdf->SetFont('Courier', 'B', 12);
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->Text(10, 10, $headerText);
+
+    }
+    //$pdf->Output();
+    $pdf->Output('F',$fileout);
+} // addMarkings($headerText, $watermarkText, $filein, $fileout)
 ?>
